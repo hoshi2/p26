@@ -66,22 +66,26 @@ export default function LogView({ state, setState }) {
       {/* 体重 */}
       <div className="card">
         <div className="card-title green" style={{ marginBottom: 10 }}>体重 (kg)</div>
-        <div className="stepper">
-          <button className="stepper-btn" onClick={() => step('weight', -0.1)}>−</button>
-          <div className="stepper-val">
-            {form.weight || '0'}<span className="unit"> kg</span>
-          </div>
-          <button className="stepper-btn" onClick={() => step('weight', 0.1)}>＋</button>
+        <div className="quick-input">
+          <input className="input-field big" type="number" inputMode="decimal" step="0.1"
+            placeholder="0.0" value={form.weight}
+            onChange={e => upd('weight', e.target.value)} />
+          <span className="quick-unit">kg</span>
+          <button className="chip" onClick={() => step('weight', -0.1)}>−0.1</button>
+          <button className="chip" onClick={() => step('weight', 0.1)}>+0.1</button>
         </div>
       </div>
 
       {/* 睡眠 */}
       <div className="card">
         <div className="card-title" style={{ marginBottom: 10 }}>睡眠 (時間)</div>
-        <div className="stepper">
-          <button className="stepper-btn" onClick={() => step('sleep', -0.5)}>−</button>
-          <div className="stepper-val">{form.sleep || '0'}<span className="unit"> h</span></div>
-          <button className="stepper-btn" onClick={() => step('sleep', 0.5)}>＋</button>
+        <div className="quick-input">
+          <input className="input-field big" type="number" inputMode="decimal" step="0.5"
+            placeholder="0" value={form.sleep}
+            onChange={e => upd('sleep', e.target.value)} />
+          <span className="quick-unit">h</span>
+          <button className="chip" onClick={() => step('sleep', -0.5)}>−0.5</button>
+          <button className="chip" onClick={() => step('sleep', 0.5)}>+0.5</button>
         </div>
       </div>
 
@@ -107,11 +111,15 @@ export default function LogView({ state, setState }) {
       {/* 勉強 */}
       <div className="card">
         <div className="card-title accent" style={{ marginBottom: 10, color: 'var(--accent)' }}>宅建 勉強 (分)</div>
-        <div className="stepper">
-          <button className="stepper-btn" onClick={() => step('studyMin', -30)}>−</button>
-          <div className="stepper-val">{form.studyMin || '0'}<span className="unit"> 分</span></div>
-          <button className="stepper-btn" onClick={() => step('studyMin', 30)}>＋</button>
+        <div className="quick-input">
+          <input className="input-field big" type="number" inputMode="numeric" step="30"
+            placeholder="0" value={form.studyMin}
+            onChange={e => upd('studyMin', e.target.value)} />
+          <span className="quick-unit">分</span>
+          <button className="chip" onClick={() => step('studyMin', 30)}>+30</button>
+          <button className="chip" onClick={() => step('studyMin', 60)}>+60</button>
         </div>
+        <div className="quick-hint">よく使う：<button className="chip ghost" onClick={() => upd('studyMin', '120')}>2時間</button><button className="chip ghost" onClick={() => upd('studyMin', '60')}>1時間</button><button className="chip ghost" onClick={() => upd('studyMin', '90')}>1.5時間</button></div>
       </div>
 
       <div style={{ margin: '14px 16px 0' }}>
