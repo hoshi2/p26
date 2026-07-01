@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react'
 import { Download, Upload, RotateCcw, Plus, Trash2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Check, Hash } from 'lucide-react'
 import { buildInitialState, newHabitId, CATEGORIES, TARGETS, todayStr } from '../data/initialData.js'
 import { habitsForMonth } from '../utils/calc.js'
+import { loadCloud, saveCloud, clearCloud, parseConfig } from '../utils/cloud.js'
 
 function shiftMonth(m, delta) {
   const [y, mo] = m.split('-').map(Number)
@@ -9,10 +10,29 @@ function shiftMonth(m, delta) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-export default function SettingsView({ state, setState }) {
+export default function SettingsView({ state, setState, cloudOn }) {
   const fileRef = useRef(null)
   const [msg, setMsg] = useState('')
   const [editMonth, setEditMonth] = useState(todayStr().slice(0, 7))
+
+  // クラウド設定
+  const existingCloud = loadCloud()
+  const [cfgText, setCfgText] = useState('')
+  const [syncCode, setSyncCode] = useState(existingCloud?.code || '')
+  function connectCloudUI() {
+    let config
+    try { config = parseConfig(cfgText) } catch (e) { alert('Firebaseの設定が読み取れません：' + e.message); return }
+    const code = (syncCode || '').trim()
+    if (code.length < 4) { alert('同期コードは4文字以上にしてください（自分だけの合言葉）'); return }
+    saveCloud({ config, code })
+    alert('クラウド保存をオンにしました。読み込み直します。')
+    window.location.reload()
+  }
+  function disconnectCloud() {
+    if (!window.confirm('クラウド保存を解除する？\n（この端末のデータは残ります。クラウド上のデータも消えません）')) return
+    clearCloud()
+    window.location.reload()
+  }
 
   function setTarget(k, v) {
     setState(prev => ({ ...prev, targets: { ...(prev.targets || {}), [k]: v === '' ? 0 : Number(v) } }))
@@ -252,9 +272,50 @@ export default function SettingsView({ state, setState }) {
         </div>
       </div>
 
-      <div className="section-header">バックアップ・同期</div>
+      <div className="section-header">クラウド自動保存（消えない保存）</div>
+      {cloudOn || existingCloud ? (
+        <>
+          <div className="alert alert-blue">
+            <b>☁ クラウド保存オン</b>（同期コード：{existingCloud?.code}）<br />
+            入力するたびに自動でクラウドに保存されます。別の端末でも同じコードを入れれば同じデータになります。
+          </div>
+          <div style={{ margin: '12px 16px 0' }}>
+            <button className="btn btn-ghost btn-full" onClick={disconnectCloud}>クラウド保存を解除する</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="alert alert-gold">
+            スマホのデータ消去や機種変でも消えないように、無料のFirebaseに自動保存できます。<b>最初の1回だけ設定</b>が必要です（手順は下）。
+          </div>
+          <div style={{ margin: '10px 16px 0' }}>
+            <div className="input-group">
+              <label className="input-label">① Firebaseの設定を貼り付け</label>
+              <textarea className="memo-area" style={{ minHeight: 90, fontFamily: 'monospace', fontSize: 11 }}
+                placeholder={'const firebaseConfig = { apiKey: "...", projectId: "...", ... }\nをまるごと貼り付け'}
+                value={cfgText} onChange={e => setCfgText(e.target.value)} />
+            </div>
+            <div className="input-group">
+              <label className="input-label">② 同期コード（自分だけの合言葉・4文字以上）</label>
+              <input className="input-field" value={syncCode} placeholder="例：stella-1207"
+                onChange={e => setSyncCode(e.target.value)} />
+            </div>
+            <button className="btn btn-blue btn-full" onClick={connectCloudUI}>クラウド保存をオンにする</button>
+          </div>
+          <div className="alert alert-blue" style={{ marginTop: 12 }}>
+            <b>設定のやり方（5分）</b><br />
+            1. <b>console.firebase.google.com</b> で無料プロジェクトを作成<br />
+            2. 「Firestore Database」を作成（テストモードでOK）<br />
+            3. ⚙️プロジェクト設定 → 「マイアプリ」でWebアプリ（&lt;/&gt;）を追加<br />
+            4. 出てくる <b>firebaseConfig</b> をコピーして上の①に貼り付け<br />
+            分からなければ、この画面のスクショを送ってくれれば一緒に進めます。
+          </div>
+        </>
+      )}
+
+      <div className="section-header">バックアップ・同期（ファイル）</div>
       <div className="alert alert-gold">
-        スマホ↔PCの同期や機種変の復元は、この「書き出し」ファイルを相手側で「読み込む」だけ。OneDriveに保存しておけば両方から開ける。
+        クラウドを使わない場合は、この「書き出し」ファイルを相手側で「読み込む」だけでも移せます。OneDriveに保存しておけば両方から開ける。
       </div>
       <div style={{ margin: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <button className="btn btn-blue btn-full" onClick={exportData}>
