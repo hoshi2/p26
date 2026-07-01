@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { LayoutGrid, ListChecks, Activity, Settings, CalendarDays } from 'lucide-react'
+import { Trophy, ListChecks, Activity, Settings, CalendarDays } from 'lucide-react'
 import { buildInitialState, todayStr, DAILY_TEMPLATE } from './data/initialData.js'
 import { loadState, saveState, weekdayJP } from './utils/calc.js'
 import Dashboard from './components/Dashboard.jsx'
@@ -34,7 +34,7 @@ export default function App() {
 
   const tabs = [
     { id: 'today', label: '今日', icon: ListChecks },
-    { id: 'dash', label: '司令室', icon: LayoutGrid },
+    { id: 'dash', label: '成果', icon: Trophy },
     { id: 'log', label: '記録', icon: Activity },
     { id: 'july', label: '7月', icon: CalendarDays },
     { id: 'set', label: '設定', icon: Settings },
