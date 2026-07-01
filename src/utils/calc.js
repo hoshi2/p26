@@ -1,8 +1,8 @@
-import { todayStr, SMOKING, DAILY_TEMPLATE } from '../data/initialData.js'
+import { todayStr, SMOKING } from '../data/initialData.js'
 
 const KEY = 'stella-command-v1'
 
-// ---- localStorage 保存・読み込み（自動保存の心臓部）----
+// ---- localStorage 保存・読み込み ----
 export function loadState() {
   try {
     const raw = localStorage.getItem(KEY)
@@ -42,28 +42,48 @@ export function weekdayJP(str) {
   return ['日', '月', '火', '水', '木', '金', '土'][d.getDay()]
 }
 
-// ---- その日のタスク達成率 ----
-export function dayRate(dayLog, tasks = DAILY_TEMPLATE) {
-  if (!dayLog || !dayLog.tasks) return 0
-  const total = tasks.length
-  const done = tasks.filter(t => dayLog.tasks[t.id]).length
-  return total === 0 ? 0 : Math.round((done / total) * 100)
+export function weekdayIdx(str) {
+  return new Date(str + 'T00:00:00').getDay()
 }
 
-// ---- ストリーク（連続で「全部やった日」が続いた数）----
-// 全タスク完了した日を1としてカウント。今日から遡る。
-export function calcStreak(days, tasks = DAILY_TEMPLATE) {
+// ---- 習慣まわり ----
+// その日の値を取り出す
+export function dayVal(days, date, id) {
+  return days?.[date]?.v?.[id]
+}
+
+// 達成率の分母に数えるか（check、または目標つきnumber）
+export function countsForRate(habit) {
+  return habit.type === 'check' || (habit.type === 'number' && habit.target != null && habit.target !== '')
+}
+
+// その習慣がその日に「達成」したか
+export function isDone(habit, val) {
+  if (val === undefined || val === null || val === '') return false
+  if (habit.type === 'check') return val === true
+  // number
+  if (habit.target != null && habit.target !== '') return Number(val) >= Number(habit.target)
+  return true // 目標なしの数値は「入力があれば達成扱い」
+}
+
+// その日のタスク達成率（%）
+export function dayRate(days, date, habits) {
+  const core = habits.filter(countsForRate)
+  if (core.length === 0) return 0
+  const done = core.filter(h => isDone(h, dayVal(days, date, h.id))).length
+  return Math.round((done / core.length) * 100)
+}
+
+// ストリーク（連続で「全部達成した日」が続いた数）
+export function calcStreak(days, habits) {
   let streak = 0
   let cursor = todayStr()
-  // 今日がまだ未完了でも、昨日までで連続が続いていればそれを数える
   for (let i = 0; i < 400; i++) {
-    const log = days[cursor]
-    const rate = dayRate(log, tasks)
+    const rate = dayRate(days, cursor, habits)
     if (rate === 100) {
       streak++
       cursor = shiftDay(cursor, -1)
     } else {
-      // 今日(i===0)がまだ未完なら飛ばして昨日から数え始める
       if (i === 0) { cursor = shiftDay(cursor, -1); continue }
       break
     }
@@ -71,39 +91,30 @@ export function calcStreak(days, tasks = DAILY_TEMPLATE) {
   return streak
 }
 
-// ---- 週間達成率（過去7日平均）----
-export function weekRate(days, tasks = DAILY_TEMPLATE) {
+export function weekRate(days, habits) {
   let sum = 0
-  for (let i = 0; i < 7; i++) {
-    const d = shiftDay(todayStr(), -i)
-    sum += dayRate(days[d], tasks)
-  }
+  for (let i = 0; i < 7; i++) sum += dayRate(days, shiftDay(todayStr(), -i), habits)
   return Math.round(sum / 7)
 }
 
-// ---- 月間達成率（過去30日平均）----
-export function monthRate(days, tasks = DAILY_TEMPLATE) {
+export function monthRate(days, habits) {
   let sum = 0
-  for (let i = 0; i < 30; i++) {
-    const d = shiftDay(todayStr(), -i)
-    sum += dayRate(days[d], tasks)
-  }
+  for (let i = 0; i < 30; i++) sum += dayRate(days, shiftDay(todayStr(), -i), habits)
   return Math.round(sum / 30)
 }
 
-// ---- やらないこと：連続日数（days = state.days, avoidId = 'no-smoke' etc）----
-export function avoidStreak(days, avoidId) {
+// check習慣：今日（未入力なら昨日）から遡って ✓ が続く数
+export function checkStreak(days, id) {
   let streak = 0
   let cursor = todayStr()
   for (let i = 0; i < 400; i++) {
-    const val = days?.[cursor]?.avoid?.[avoidId]
+    const val = dayVal(days, cursor, id)
     if (val === true) {
       streak++
       cursor = shiftDay(cursor, -1)
     } else if (val === false) {
       break
     } else {
-      // undefined = まだ記録なし
       if (i === 0) { cursor = shiftDay(cursor, -1); continue }
       break
     }
@@ -111,59 +122,87 @@ export function avoidStreak(days, avoidId) {
   return streak
 }
 
-// ---- 禁煙：節約額・本数 ----
-export function smokingStats(days) {
-  const streak = avoidStreak(days, 'no-smoke')
+// ---- 集計（指定 年月 "YYYY-MM"、省略で今月）----
+function ym(month) { return month || todayStr().slice(0, 7) }
+
+// number習慣の合計
+export function monthSum(days, id, month) {
+  const m = ym(month)
+  let sum = 0
+  for (const [date, log] of Object.entries(days || {})) {
+    if (!date.startsWith(m)) continue
+    const v = log?.v?.[id]
+    if (v != null && v !== '' && v !== false && v !== true) sum += Number(v)
+  }
+  return Math.round(sum * 10) / 10
+}
+
+// number習慣の累計（全期間）
+export function totalSum(days, id) {
+  let sum = 0
+  for (const log of Object.values(days || {})) {
+    const v = log?.v?.[id]
+    if (v != null && v !== '' && v !== false && v !== true) sum += Number(v)
+  }
+  return Math.round(sum * 10) / 10
+}
+
+// check習慣の達成日数
+export function monthDoneCount(days, id, month) {
+  const m = ym(month)
+  let n = 0
+  for (const [date, log] of Object.entries(days || {})) {
+    if (date.startsWith(m) && log?.v?.[id] === true) n++
+  }
+  return n
+}
+
+// number習慣の最新値
+export function latestVal(days, id) {
+  const dates = Object.keys(days || {}).filter(d => {
+    const v = days[d]?.v?.[id]
+    return v != null && v !== '' && v !== false && v !== true
+  }).sort()
+  const last = dates[dates.length - 1]
+  return last ? Number(days[last].v[id]) : null
+}
+
+// number習慣の時系列（グラフ用）
+export function numberSeries(days, id) {
+  return Object.keys(days || {})
+    .filter(d => {
+      const v = days[d]?.v?.[id]
+      return v != null && v !== '' && v !== false && v !== true
+    })
+    .sort()
+    .map(d => ({ date: d.slice(5), value: Number(days[d].v[id]) }))
+}
+
+// 禁煙：節約額・本数
+export function smokingStats(days, id = 'no-smoke') {
+  const streak = checkStreak(days, id)
   const cigsAvoided = streak * SMOKING.cigsPerDayBefore
   const yenPerCig = SMOKING.pricePerPack / SMOKING.cigsPerPack
   const saved = Math.round(cigsAvoided * yenPerCig)
   return { days: streak, cigsAvoided, saved }
 }
 
-// ---- メトリクスから特定キーの時系列を取り出す（グラフ用）----
-export function series(metrics, key) {
-  return metrics
-    .filter(m => m[key] !== undefined && m[key] !== null && m[key] !== '')
-    .map(m => ({ date: m.date.slice(5), [key]: Number(m[key]) }))
-}
-
-// ---- 今月のUber売上合計 ----
-export function monthUberSales(metrics) {
-  const ym = todayStr().slice(0, 7)
-  return metrics
-    .filter(m => m.date.startsWith(ym) && m.uberSales)
-    .reduce((s, m) => s + Number(m.uberSales), 0)
-}
-
-export function monthUberHours(metrics) {
-  const ym = todayStr().slice(0, 7)
-  return metrics
-    .filter(m => m.date.startsWith(ym) && m.uberHours)
-    .reduce((s, m) => s + Number(m.uberHours), 0)
-}
-
-// ---- 今月の累計勉強時間（分→時間）----
-export function monthStudyHours(metrics) {
-  const ym = todayStr().slice(0, 7)
-  const min = metrics
-    .filter(m => m.date.startsWith(ym) && m.studyMin)
-    .reduce((s, m) => s + Number(m.studyMin), 0)
-  return Math.round(min / 6) / 10 // 0.1h単位
-}
-
-export function totalStudyHours(metrics) {
-  const min = metrics
-    .filter(m => m.studyMin)
-    .reduce((s, m) => s + Number(m.studyMin), 0)
-  return Math.round(min / 6) / 10
-}
-
-// ---- 最新の体重 ----
-export function latestWeight(metrics) {
-  const w = metrics.filter(m => m.weight).slice(-1)[0]
-  return w ? Number(w.weight) : null
-}
-
 export function yen(n) {
   return '¥' + Math.round(n).toLocaleString('ja-JP')
+}
+
+// number習慣の値をセル用に短く整形（円→k表記）
+export function shortNum(habit, v) {
+  if (v == null || v === '') return ''
+  const n = Number(v)
+  if (habit.unit === '円') return (Math.round(n / 100) / 10) + 'k'
+  return String(n)
+}
+
+// number習慣の入力ステップ（単位から推定）
+export function stepFor(habit) {
+  if (habit.unit === '円') return 1000
+  if (habit.unit === 'kg') return 0.1
+  if (habit.unit === 'h') return 0.5
+  return 1
 }

@@ -1,10 +1,10 @@
 import React from 'react'
-import { Banknote, TrendingUp, Heart, BookOpen, Flame, CalendarClock } from 'lucide-react'
+import { TrendingUp, Heart, BookOpen, Flame, CalendarClock } from 'lucide-react'
 import { DEADLINES, TARGETS, todayStr } from '../data/initialData.js'
 import {
   calcStreak, weekRate, monthRate, daysBetween,
-  monthUberSales, monthUberHours, monthStudyHours, totalStudyHours,
-  latestWeight, smokingStats, yen,
+  monthSum, totalSum, checkStreak, monthDoneCount, latestVal,
+  smokingStats, yen,
 } from '../utils/calc.js'
 
 function Ring({ pct, color, sub }) {
@@ -30,23 +30,23 @@ function Ring({ pct, color, sub }) {
 }
 
 export default function Dashboard({ state }) {
-  const tasks = state.tasks || []
-  const streak = calcStreak(state.days, tasks)
-  const wRate = weekRate(state.days, tasks)
-  const mRate = monthRate(state.days, tasks)
+  const habits = state.habits || []
+  const days = state.days || {}
+  const has = (id) => habits.some(h => h.id === id)
+
+  const streak = calcStreak(days, habits)
+  const wRate = weekRate(days, habits)
+  const mRate = monthRate(days, habits)
 
   const uberMonthlyTarget = state.targets?.uberMonthlyYen ?? TARGETS.uberMonthlyYen
-  const uberHourlyTarget = state.targets?.uberHourlyYen ?? TARGETS.uberHourlyYen
-
-  const uberSales = monthUberSales(state.metrics)
-  const uberHours = monthUberHours(state.metrics)
+  const uberSales = monthSum(days, 'uber')
   const uberPct = Math.min(100, Math.round((uberSales / uberMonthlyTarget) * 100))
-  const realHourly = uberHours > 0 ? Math.round(uberSales / uberHours) : 0
 
-  const studyMonth = monthStudyHours(state.metrics)
-  const studyTotal = totalStudyHours(state.metrics)
-  const weight = latestWeight(state.metrics)
-  const smoke = smokingStats(state.days)
+  const studyMonth = monthSum(days, 'study')
+  const studyTotal = totalSum(days, 'study')
+  const weight = latestVal(days, 'weight')
+  const smoke = smokingStats(days, 'no-smoke')
+  const workoutDays = monthDoneCount(days, 'workout')
 
   return (
     <>
@@ -56,7 +56,7 @@ export default function Dashboard({ state }) {
         <span className="streak-num">{streak}</span>
         <div className="streak-info">
           <div className="streak-title">連続達成日数</div>
-          <div className="streak-sub">全タスクを完了した日が続いている数</div>
+          <div className="streak-sub">目標つきの項目を全部クリアした日が続いてる数</div>
         </div>
       </div>
 
@@ -72,59 +72,66 @@ export default function Dashboard({ state }) {
       </div>
 
       {/* 生存資金（Uber） */}
-      <div className="section-header">生存資金 — Uber</div>
-      <div className="kpi-grid">
-        <div className="kpi-card gold-border wide">
-          <div className="kpi-label">今月のUber売上 / 目標 {yen(uberMonthlyTarget)}</div>
-          <div className="kpi-value gold">{yen(uberSales)}</div>
-          <div className="progress-bar-wrap">
-            <div className="progress-bar-fill gold" style={{ width: uberPct + '%' }} />
+      {has('uber') && (
+        <>
+          <div className="section-header">生存資金 — Uber</div>
+          <div className="kpi-grid">
+            <div className="kpi-card gold-border wide">
+              <div className="kpi-label">今月のUber売上 / 目標 {yen(uberMonthlyTarget)}</div>
+              <div className="kpi-value gold">{yen(uberSales)}</div>
+              <div className="progress-bar-wrap">
+                <div className="progress-bar-fill gold" style={{ width: uberPct + '%' }} />
+              </div>
+              <div className="kpi-sub">{uberPct}% 達成</div>
+            </div>
           </div>
-          <div className="kpi-sub">{uberPct}% 達成</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label">今月の稼働</div>
-          <div className="kpi-value">{uberHours}<span className="unit">h</span></div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label">実時給</div>
-          <div className={'kpi-value ' + (realHourly >= uberHourlyTarget ? 'green' : '')}>
-            {realHourly > 0 ? yen(realHourly) : '—'}
-          </div>
-          <div className="kpi-sub">目標 {yen(uberHourlyTarget)}</div>
-        </div>
-      </div>
+        </>
+      )}
 
-      {/* 未来（FX / 勉強） */}
+      {/* 未来 / 勉強 */}
       <div className="section-header">未来への投資</div>
       <div className="kpi-grid">
-        <div className="kpi-card blue-border">
-          <div className="kpi-label"><TrendingUp size={11} style={{ verticalAlign: -1 }} /> FX 本命</div>
-          <div className="kpi-value blue">分析のみ</div>
-          <div className="kpi-sub">エントリー禁止・技術を磨く</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label"><BookOpen size={11} style={{ verticalAlign: -1 }} /> 宅建 累計</div>
-          <div className="kpi-value accent">{studyTotal}<span className="unit">/{TARGETS.studyTotalTarget}h</span></div>
-          <div className="progress-bar-wrap">
-            <div className="progress-bar-fill accent" style={{ width: Math.min(100, Math.round((studyTotal / TARGETS.studyTotalTarget) * 100)) + '%' }} />
+        {has('fx') && (
+          <div className="kpi-card blue-border">
+            <div className="kpi-label"><TrendingUp size={11} style={{ verticalAlign: -1 }} /> FX 本命</div>
+            <div className="kpi-value blue">分析のみ</div>
+            <div className="kpi-sub">エントリー禁止・技術を磨く</div>
           </div>
-          <div className="kpi-sub">今月 {studyMonth}h・合格目安300h</div>
-        </div>
+        )}
+        {has('study') && (
+          <div className="kpi-card">
+            <div className="kpi-label"><BookOpen size={11} style={{ verticalAlign: -1 }} /> 宅建 累計</div>
+            <div className="kpi-value accent">{studyTotal}<span className="unit">/{TARGETS.studyTotalTarget}h</span></div>
+            <div className="progress-bar-wrap">
+              <div className="progress-bar-fill accent" style={{ width: Math.min(100, Math.round((studyTotal / TARGETS.studyTotalTarget) * 100)) + '%' }} />
+            </div>
+            <div className="kpi-sub">今月 {studyMonth}h・合格目安300h</div>
+          </div>
+        )}
       </div>
 
       {/* 健康 */}
       <div className="section-header">健康を戻す</div>
       <div className="kpi-grid">
-        <div className="kpi-card green-border">
-          <div className="kpi-label"><Heart size={11} style={{ verticalAlign: -1 }} /> 最新体重</div>
-          <div className="kpi-value green">{weight !== null ? weight : '—'}<span className="unit">kg</span></div>
-        </div>
-        <div className="kpi-card green-border">
-          <div className="kpi-label">禁煙 継続</div>
-          <div className="kpi-value green">{smoke.days}<span className="unit">日</span></div>
-          <div className="kpi-sub">{smoke.cigsAvoided}本 我慢 / {yen(smoke.saved)} 節約</div>
-        </div>
+        {has('weight') && (
+          <div className="kpi-card green-border">
+            <div className="kpi-label"><Heart size={11} style={{ verticalAlign: -1 }} /> 最新体重</div>
+            <div className="kpi-value green">{weight !== null ? weight : '—'}<span className="unit">kg</span></div>
+          </div>
+        )}
+        {has('workout') && (
+          <div className="kpi-card green-border">
+            <div className="kpi-label">今月の筋トレ</div>
+            <div className="kpi-value green">{workoutDays}<span className="unit">日</span></div>
+          </div>
+        )}
+        {has('no-smoke') && (
+          <div className="kpi-card green-border wide">
+            <div className="kpi-label">禁煙 継続</div>
+            <div className="kpi-value green">{smoke.days}<span className="unit">日</span></div>
+            <div className="kpi-sub">{smoke.cigsAvoided}本 我慢 / {yen(smoke.saved)} 節約</div>
+          </div>
+        )}
       </div>
 
       {/* カウントダウン */}

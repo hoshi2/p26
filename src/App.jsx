@@ -1,23 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Trophy, ListChecks, Activity, Settings, CalendarDays } from 'lucide-react'
-import { buildInitialState, todayStr, DAILY_TEMPLATE } from './data/initialData.js'
+import { LayoutGrid, Trophy, LineChart, Settings } from 'lucide-react'
+import { buildInitialState, migrateState, todayStr } from './data/initialData.js'
 import { loadState, saveState, weekdayJP } from './utils/calc.js'
+import GridView from './components/GridView.jsx'
 import Dashboard from './components/Dashboard.jsx'
-import TodayView from './components/TodayView.jsx'
 import LogView from './components/LogView.jsx'
 import SettingsView from './components/SettingsView.jsx'
-import JulyView from './components/JulyView.jsx'
-
-// 古い保存データに tasks が無い場合は補う
-function migrate(s) {
-  if (!s) return s
-  if (!s.tasks) s.tasks = DAILY_TEMPLATE.map(t => ({ ...t }))
-  return s
-}
 
 export default function App() {
-  const [state, setState] = useState(() => migrate(loadState()) || buildInitialState())
-  const [tab, setTab] = useState('today')
+  const [state, setState] = useState(() => migrateState(loadState()) || buildInitialState())
+  const [tab, setTab] = useState('grid')
   const [saving, setSaving] = useState(false)
   const firstRun = useRef(true)
 
@@ -33,10 +25,9 @@ export default function App() {
   const today = todayStr()
 
   const tabs = [
-    { id: 'today', label: '今日', icon: ListChecks },
+    { id: 'grid', label: '習慣', icon: LayoutGrid },
     { id: 'dash', label: '成果', icon: Trophy },
-    { id: 'log', label: '記録', icon: Activity },
-    { id: 'july', label: '7月', icon: CalendarDays },
+    { id: 'log', label: '記録', icon: LineChart },
     { id: 'set', label: '設定', icon: Settings },
   ]
 
@@ -76,10 +67,9 @@ export default function App() {
       </nav>
 
       <main className="app-main">
-        {tab === 'today' && <TodayView state={state} setState={setState} />}
+        {tab === 'grid' && <GridView state={state} setState={setState} />}
         {tab === 'dash' && <Dashboard state={state} />}
-        {tab === 'log' && <LogView state={state} setState={setState} />}
-        {tab === 'july' && <JulyView state={state} />}
+        {tab === 'log' && <LogView state={state} />}
         {tab === 'set' && <SettingsView state={state} setState={setState} />}
       </main>
     </div>

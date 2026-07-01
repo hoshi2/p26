@@ -1,7 +1,6 @@
 import React, { useRef, useState } from 'react'
-import { Download, Upload, RotateCcw, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
-import { buildInitialState, newTaskId, CATEGORIES, TARGETS } from '../data/initialData.js'
-import { yen } from '../utils/calc.js'
+import { Download, Upload, RotateCcw, Plus, Trash2, ChevronUp, ChevronDown, Check, Hash } from 'lucide-react'
+import { buildInitialState, newHabitId, CATEGORIES, TARGETS } from '../data/initialData.js'
 
 export default function SettingsView({ state, setState }) {
   const fileRef = useRef(null)
@@ -15,35 +14,32 @@ export default function SettingsView({ state, setState }) {
     setState(prev => ({ ...prev, targets: { ...(prev.targets || {}), [k]: v === '' ? 0 : Number(v) } }))
   }
 
-  // ---- タスク編集 ----
-  const tasks = state.tasks || []
-  function updTask(id, key, val) {
+  // ---- 習慣（項目）編集 ----
+  const habits = state.habits || []
+  function updHabit(id, key, val) {
+    setState(prev => ({ ...prev, habits: prev.habits.map(h => h.id === id ? { ...h, [key]: val } : h) }))
+  }
+  function addHabit() {
     setState(prev => ({
       ...prev,
-      tasks: prev.tasks.map(t => t.id === id ? { ...t, [key]: val } : t),
+      habits: [...prev.habits, { id: newHabitId(), name: '新しい項目', type: 'check', cat: 'survive' }],
     }))
   }
-  function addTask() {
-    setState(prev => ({
-      ...prev,
-      tasks: [...prev.tasks, { id: newTaskId(), name: '新しいタスク', meta: '', cat: 'survive' }],
-    }))
+  function removeHabit(id) {
+    if (!window.confirm('この項目を削除する？（過去の記録も表示されなくなります）')) return
+    setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }))
   }
-  function removeTask(id) {
-    setState(prev => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }))
-  }
-  function moveTask(id, dir) {
+  function moveHabit(id, dir) {
     setState(prev => {
-      const arr = [...prev.tasks]
-      const i = arr.findIndex(t => t.id === id)
+      const arr = [...prev.habits]
+      const i = arr.findIndex(h => h.id === id)
       const j = i + dir
       if (i < 0 || j < 0 || j >= arr.length) return prev
       ;[arr[i], arr[j]] = [arr[j], arr[i]]
-      return { ...prev, tasks: arr }
+      return { ...prev, habits: arr }
     })
   }
 
-  // バックアップ：JSONをダウンロード
   function exportData() {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -57,7 +53,6 @@ export default function SettingsView({ state, setState }) {
     setTimeout(() => setMsg(''), 2500)
   }
 
-  // 復元：JSONを読み込む
   function importData(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -97,43 +92,79 @@ export default function SettingsView({ state, setState }) {
         />
       </div>
 
-      <div className="section-header">今日やること（編集）</div>
+      <div className="section-header">記録する項目（自由に編集）</div>
       <div style={{ margin: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {tasks.map((t, i) => (
-          <div key={t.id} className="edit-task">
+        {habits.map((h, i) => (
+          <div key={h.id} className="edit-task">
             <div className="edit-task-top">
-              <span className={'task-cat-bar cat-' + t.cat} style={{ height: 18, width: 3, borderRadius: 3 }} />
+              <span className={'task-cat-bar cat-' + h.cat} style={{ height: 18, width: 3, borderRadius: 3 }} />
               <input
                 className="input-field"
                 style={{ flex: 1, fontFamily: 'inherit', fontSize: 13 }}
-                value={t.name}
-                onChange={e => updTask(t.id, 'name', e.target.value)}
-                placeholder="タスク名"
+                value={h.name}
+                onChange={e => updHabit(h.id, 'name', e.target.value)}
+                placeholder="項目名"
               />
-              <button className="icon-btn" onClick={() => moveTask(t.id, -1)} disabled={i === 0} aria-label="上へ">
+              <button className="icon-btn" onClick={() => moveHabit(h.id, -1)} disabled={i === 0} aria-label="上へ">
                 <ChevronUp size={16} />
               </button>
-              <button className="icon-btn" onClick={() => moveTask(t.id, 1)} disabled={i === tasks.length - 1} aria-label="下へ">
+              <button className="icon-btn" onClick={() => moveHabit(h.id, 1)} disabled={i === habits.length - 1} aria-label="下へ">
                 <ChevronDown size={16} />
               </button>
-              <button className="icon-btn danger" onClick={() => removeTask(t.id)} aria-label="削除">
+              <button className="icon-btn danger" onClick={() => removeHabit(h.id)} aria-label="削除">
                 <Trash2 size={15} />
               </button>
             </div>
-            <input
-              className="input-field"
-              style={{ fontFamily: 'inherit', fontSize: 12, marginTop: 6 }}
-              value={t.meta}
-              onChange={e => updTask(t.id, 'meta', e.target.value)}
-              placeholder="サブ文（目標・メモなど。空でもOK）"
-            />
+
+            {/* タイプ切り替え */}
+            <div className="cat-pills" style={{ marginTop: 8 }}>
+              <button
+                className={'cat-pill' + (h.type === 'check' ? ' active' : '')}
+                style={h.type === 'check' ? { borderColor: 'var(--green)', color: 'var(--green)' } : {}}
+                onClick={() => updHabit(h.id, 'type', 'check')}
+              ><Check size={11} style={{ verticalAlign: -1 }} /> できた/できない</button>
+              <button
+                className={'cat-pill' + (h.type === 'number' ? ' active' : '')}
+                style={h.type === 'number' ? { borderColor: 'var(--blue)', color: 'var(--blue2)' } : {}}
+                onClick={() => updHabit(h.id, 'type', 'number')}
+              ><Hash size={11} style={{ verticalAlign: -1 }} /> 数字で記録</button>
+            </div>
+
+            {/* number のときだけ 単位・目標 */}
+            {h.type === 'number' && (
+              <div className="input-row" style={{ marginTop: 8 }}>
+                <div className="input-group" style={{ marginBottom: 0 }}>
+                  <label className="input-label">単位</label>
+                  <input className="input-field" style={{ fontSize: 13 }}
+                    value={h.unit || ''} placeholder="円 / h / kg"
+                    onChange={e => updHabit(h.id, 'unit', e.target.value)} />
+                </div>
+                <div className="input-group" style={{ marginBottom: 0 }}>
+                  <label className="input-label">1日の目標（空=なし）</label>
+                  <input className="input-field" type="number" inputMode="decimal" style={{ fontSize: 13 }}
+                    value={h.target ?? ''} placeholder="例 15000"
+                    onChange={e => updHabit(h.id, 'target', e.target.value === '' ? undefined : Number(e.target.value))} />
+                </div>
+              </div>
+            )}
+            {h.type === 'check' && (
+              <input
+                className="input-field"
+                style={{ fontFamily: 'inherit', fontSize: 12, marginTop: 8 }}
+                value={h.hint || ''}
+                onChange={e => updHabit(h.id, 'hint', e.target.value)}
+                placeholder="ひとこと補足（例：エントリーしない。空でもOK）"
+              />
+            )}
+
+            {/* カテゴリ（色） */}
             <div className="cat-pills">
               {CATEGORIES.map(c => (
                 <button
                   key={c.id}
-                  className={'cat-pill' + (t.cat === c.id ? ' active' : '')}
-                  style={t.cat === c.id ? { borderColor: c.color, color: c.color } : {}}
-                  onClick={() => updTask(t.id, 'cat', c.id)}
+                  className={'cat-pill' + (h.cat === c.id ? ' active' : '')}
+                  style={h.cat === c.id ? { borderColor: c.color, color: c.color } : {}}
+                  onClick={() => updHabit(h.id, 'cat', c.id)}
                 >
                   {c.label}
                 </button>
@@ -141,12 +172,12 @@ export default function SettingsView({ state, setState }) {
             </div>
           </div>
         ))}
-        <button className="btn btn-ghost btn-full" onClick={addTask}>
-          <Plus size={15} /> タスクを追加
+        <button className="btn btn-ghost btn-full" onClick={addHabit}>
+          <Plus size={15} /> 項目を追加
         </button>
       </div>
 
-      <div className="section-header">Uber 目標（設定）</div>
+      <div className="section-header">Uber 月間目標</div>
       <div className="kpi-grid">
         <div className="input-group" style={{ margin: 0 }}>
           <label className="input-label" style={{ paddingLeft: 4 }}>月間売上目標（円）</label>
@@ -164,7 +195,7 @@ export default function SettingsView({ state, setState }) {
 
       <div className="section-header">お金（手入力）</div>
       <div className="kpi-grid">
-        <div className="input-group" style={{ margin: '0 0 0 0' }}>
+        <div className="input-group" style={{ margin: 0 }}>
           <label className="input-label" style={{ paddingLeft: 4 }}>固定費 / 月</label>
           <input className="input-field" type="number" inputMode="numeric"
             value={state.money.fixedCost || ''} placeholder="0"
@@ -197,10 +228,6 @@ export default function SettingsView({ state, setState }) {
           <RotateCcw size={15} /> 全データを初期化
         </button>
         {msg && <div className="alert alert-blue center" style={{ margin: '4px 0 0' }}>{msg}</div>}
-      </div>
-
-      <div className="alert alert-blue" style={{ marginTop: 16 }}>
-        データはこの端末のブラウザに自動保存される。タスク内容や目標を変えたい時は、コードの <b>initialData.js</b> を書き換えればOK。
       </div>
 
       <div style={{ height: 24 }} />
