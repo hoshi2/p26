@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { LayoutGrid, ListChecks, Activity, Settings } from 'lucide-react'
+import { LayoutGrid, ListChecks, Activity, Settings, CalendarDays } from 'lucide-react'
 import { buildInitialState, todayStr, DAILY_TEMPLATE } from './data/initialData.js'
 import { loadState, saveState, weekdayJP } from './utils/calc.js'
 import Dashboard from './components/Dashboard.jsx'
 import TodayView from './components/TodayView.jsx'
 import LogView from './components/LogView.jsx'
 import SettingsView from './components/SettingsView.jsx'
+import JulyView from './components/JulyView.jsx'
 
 // 古い保存データに tasks が無い場合は補う
 function migrate(s) {
@@ -35,6 +36,7 @@ export default function App() {
     { id: 'today', label: '今日', icon: ListChecks },
     { id: 'dash', label: '司令室', icon: LayoutGrid },
     { id: 'log', label: '記録', icon: Activity },
+    { id: 'july', label: '7月', icon: CalendarDays },
     { id: 'set', label: '設定', icon: Settings },
   ]
 
@@ -77,6 +79,7 @@ export default function App() {
         {tab === 'today' && <TodayView state={state} setState={setState} />}
         {tab === 'dash' && <Dashboard state={state} />}
         {tab === 'log' && <LogView state={state} setState={setState} />}
+        {tab === 'july' && <JulyView state={state} />}
         {tab === 'set' && <SettingsView state={state} setState={setState} />}
       </main>
     </div>
