@@ -1,17 +1,18 @@
 import React, { useState, useRef } from 'react'
 import { Check, X, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react'
 import { todayStr, catColor } from '../data/initialData.js'
-import { weekdayIdx, dayVal, isDone, dayRate, shortNum, stepFor } from '../utils/calc.js'
+import { weekdayIdx, dayVal, isDone, dayRate, shortNum, stepFor, habitsForMonth } from '../utils/calc.js'
+import Journal from './Journal.jsx'
 import '../styles/grid.css'
 
 const DOW = ['日', '月', '火', '水', '木', '金', '土']
 
 export default function GridView({ state, setState }) {
   const today = todayStr()
-  const habits = state.habits || []
 
   // 今月を7日ずつの「週」に区切る
   const monthStr = today.slice(0, 7)
+  const habits = habitsForMonth(state, monthStr)
   const [y, mo] = monthStr.split('-').map(Number)
   const daysInMonth = new Date(y, mo, 0).getDate()
   const allDays = Array.from({ length: daysInMonth }, (_, i) => {
@@ -83,14 +84,6 @@ export default function GridView({ state, setState }) {
 
   return (
     <>
-      {/* ミッション */}
-      {state.mission && (
-        <div className="grid-mission">
-          <span className="grid-mission-label">今日の一手</span>
-          <span className="grid-mission-text">{state.mission}</span>
-        </div>
-      )}
-
       {/* 週ナビ */}
       <div className="week-nav">
         <button className="week-arrow" onClick={() => setWeek(w => Math.max(0, w - 1))} disabled={week === 0} aria-label="前の週">
@@ -196,16 +189,8 @@ export default function GridView({ state, setState }) {
         項目の追加や名前・目標の変更は「設定」タブでできます。
       </div>
 
-      {/* メモ */}
-      <div className="section-header">頭の中を出す（メモ）</div>
-      <div style={{ margin: '6px 16px 0' }}>
-        <textarea
-          className="memo-area"
-          placeholder="気になること、忘れたくないこと、ここに全部出す"
-          value={state.memo}
-          onChange={e => setState(prev => ({ ...prev, memo: e.target.value }))}
-        />
-      </div>
+      {/* メモ（日付ごとに溜まる） */}
+      <Journal state={state} setState={setState} />
       <div style={{ height: 24 }} />
 
       {/* 数値入力モーダル */}

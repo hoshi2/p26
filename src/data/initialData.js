@@ -1,9 +1,6 @@
 // ========================================================
-// STELLA COMMAND - 初期設定（v2：習慣グリッド統一モデル）
+// STELLA COMMAND - 初期設定（v3：月ごとの項目リスト対応）
 // ========================================================
-
-// 今日の最優先ミッション
-export const DEFAULT_MISSION = 'Uber 6時間稼働 → 生存資金を確保する'
 
 // 習慣テンプレ（設定画面で自由に追加・変更・削除できる）
 //   type: 'check'  … ✓/✗ の2択（筋トレ・FX・禁煙 など）
@@ -53,22 +50,23 @@ export function catColor(cat) {
   return (CATEGORIES.find(c => c.id === cat) || {}).color || 'var(--text3)'
 }
 
-// 初期状態（localStorageに何もない時の土台）
-//   days: { "2026-07-01": { v: { habitId: 値 } } }
-//     check   → true / false
-//     number  → 数値
+function defTargets() {
+  return { uberMonthlyYen: TARGETS.uberMonthlyYen, uberHourlyYen: TARGETS.uberHourlyYen }
+}
+
+// 初期状態
+//   habitSets: { "2026-07": [ 項目... ] }   ← 月ごとに項目リストを持つ
+//   days:      { "2026-07-01": { v: { habitId: 値 } } }   ← 記録は日付ごと（項目を変えても消えない）
+//   journal:   { "2026-07-01": "メモ本文" }
 export function buildInitialState() {
+  const month = todayStr().slice(0, 7)
   return {
-    version: 2,
-    mission: DEFAULT_MISSION,
-    habits: HABIT_TEMPLATE.map(h => ({ ...h })),
+    version: 3,
+    habitSets: { [month]: HABIT_TEMPLATE.map(h => ({ ...h })) },
     days: {},
-    memo: '',
+    journal: {},
     money: { fixedCost: 0, monthSpend: 0 },
-    targets: {
-      uberMonthlyYen: TARGETS.uberMonthlyYen,
-      uberHourlyYen: TARGETS.uberHourlyYen,
-    },
+    targets: defTargets(),
   }
 }
 
@@ -77,45 +75,55 @@ export function newHabitId() {
   return 'h' + Date.now().toString(36)
 }
 
-// 古い保存データ（v1）を新形式（v2）へ変換。データを失わないための橋渡し。
+// 古い保存データ（v1/v2）を新形式（v3）へ変換。過去データを失わないための橋渡し。
 export function migrateState(s) {
   if (!s) return null
-  if (s.version >= 2) {
-    if (!s.habits) s.habits = HABIT_TEMPLATE.map(h => ({ ...h }))
-    if (!s.targets) s.targets = { uberMonthlyYen: TARGETS.uberMonthlyYen, uberHourlyYen: TARGETS.uberHourlyYen }
+  const month = todayStr().slice(0, 7)
+
+  // すでに v3
+  if (s.version >= 3) {
+    if (!s.habitSets || Object.keys(s.habitSets).length === 0) {
+      s.habitSets = { [month]: (s.habits || HABIT_TEMPLATE).map(h => ({ ...h })) }
+    }
+    if (!s.journal) s.journal = {}
+    if (!s.targets) s.targets = defTargets()
     return s
   }
 
-  // ---- v1 → v2 ----
-  const days = {}
-  const ensure = (date) => (days[date] || (days[date] = { v: {} }))
-
-  // 旧 days（tasks / avoid）
-  for (const [date, log] of Object.entries(s.days || {})) {
-    const v = ensure(date).v
-    if (log.tasks && 'workout' in log.tasks) v.workout = !!log.tasks.workout
-    if (log.tasks && 'fx' in log.tasks) v.fx = !!log.tasks.fx
-    if (log.avoid && 'no-smoke' in log.avoid) v['no-smoke'] = log.avoid['no-smoke']
+  // days を v 形式へ
+  let days = {}
+  if (s.version >= 2) {
+    days = s.days || {}
+  } else {
+    // v1 → 変換（tasks / avoid / metrics）
+    const ensure = (date) => (days[date] || (days[date] = { v: {} }))
+    for (const [date, log] of Object.entries(s.days || {})) {
+      const v = ensure(date).v
+      if (log.tasks && 'workout' in log.tasks) v.workout = !!log.tasks.workout
+      if (log.tasks && 'fx' in log.tasks) v.fx = !!log.tasks.fx
+      if (log.avoid && 'no-smoke' in log.avoid) v['no-smoke'] = log.avoid['no-smoke']
+    }
+    for (const m of (s.metrics || [])) {
+      if (!m || !m.date) continue
+      const v = ensure(m.date).v
+      if (m.uberSales != null && m.uberSales !== '') v.uber = Number(m.uberSales)
+      if (m.studyMin != null && m.studyMin !== '') v.study = Math.round(Number(m.studyMin) / 6) / 10
+      if (m.weight != null && m.weight !== '') v.weight = Number(m.weight)
+      if (m.sleep != null && m.sleep !== '') v.sleep = Number(m.sleep)
+    }
   }
 
-  // 旧 metrics（数値）
-  for (const m of (s.metrics || [])) {
-    if (!m || !m.date) continue
-    const v = ensure(m.date).v
-    if (m.uberSales != null && m.uberSales !== '') v.uber = Number(m.uberSales)
-    if (m.studyMin != null && m.studyMin !== '') v.study = Math.round(Number(m.studyMin) / 6) / 10
-    if (m.weight != null && m.weight !== '') v.weight = Number(m.weight)
-    if (m.sleep != null && m.sleep !== '') v.sleep = Number(m.sleep)
-  }
+  const habits = (s.habits && s.habits.length ? s.habits : HABIT_TEMPLATE).map(h => ({ ...h }))
+  const journal = {}
+  if (s.memo && String(s.memo).trim()) journal[todayStr()] = String(s.memo)
 
   return {
-    version: 2,
-    mission: s.mission ?? DEFAULT_MISSION,
-    habits: HABIT_TEMPLATE.map(h => ({ ...h })),
+    version: 3,
+    habitSets: { [month]: habits },
     days,
-    memo: s.memo ?? '',
+    journal,
     money: s.money ?? { fixedCost: 0, monthSpend: 0 },
-    targets: s.targets ?? { uberMonthlyYen: TARGETS.uberMonthlyYen, uberHourlyYen: TARGETS.uberHourlyYen },
+    targets: s.targets ?? defTargets(),
   }
 }
 

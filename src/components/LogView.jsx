@@ -2,8 +2,8 @@ import React from 'react'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
-import { catColor } from '../data/initialData.js'
-import { numberSeries, monthSum, yen } from '../utils/calc.js'
+import { catColor, todayStr } from '../data/initialData.js'
+import { numberSeries, monthSum, yen, habitsForMonth } from '../utils/calc.js'
 
 // 色を実際の値に解決（rechartsはCSS変数を解釈できないため）
 const HEX = {
@@ -13,7 +13,7 @@ const HEX = {
 
 export default function LogView({ state }) {
   const days = state.days || {}
-  const numberHabits = (state.habits || []).filter(h => h.type === 'number')
+  const numberHabits = habitsForMonth(state, todayStr().slice(0, 7)).filter(h => h.type === 'number')
 
   return (
     <>

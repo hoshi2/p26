@@ -1,12 +1,19 @@
 import React, { useRef, useState } from 'react'
-import { Download, Upload, RotateCcw, Plus, Trash2, ChevronUp, ChevronDown, Check, Hash } from 'lucide-react'
-import { buildInitialState, newHabitId, CATEGORIES, TARGETS } from '../data/initialData.js'
+import { Download, Upload, RotateCcw, Plus, Trash2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Check, Hash } from 'lucide-react'
+import { buildInitialState, newHabitId, CATEGORIES, TARGETS, todayStr } from '../data/initialData.js'
+import { habitsForMonth } from '../utils/calc.js'
+
+function shiftMonth(m, delta) {
+  const [y, mo] = m.split('-').map(Number)
+  const d = new Date(y, mo - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
 
 export default function SettingsView({ state, setState }) {
   const fileRef = useRef(null)
   const [msg, setMsg] = useState('')
+  const [editMonth, setEditMonth] = useState(todayStr().slice(0, 7))
 
-  function setMission(v) { setState(prev => ({ ...prev, mission: v })) }
   function setMoney(k, v) {
     setState(prev => ({ ...prev, money: { ...prev.money, [k]: v === '' ? 0 : Number(v) } }))
   }
@@ -14,29 +21,37 @@ export default function SettingsView({ state, setState }) {
     setState(prev => ({ ...prev, targets: { ...(prev.targets || {}), [k]: v === '' ? 0 : Number(v) } }))
   }
 
-  // ---- 習慣（項目）編集 ----
-  const habits = state.habits || []
+  // ---- 月ごとの項目編集 ----
+  const habits = habitsForMonth(state, editMonth)
+  const thisMonth = todayStr().slice(0, 7)
+
+  // 編集する月のリストを（無ければ引き継いで）確定させてから書き換える
+  function editHabits(fn) {
+    setState(prev => {
+      const sets = { ...(prev.habitSets || {}) }
+      if (!sets[editMonth]) sets[editMonth] = habitsForMonth(prev, editMonth).map(h => ({ ...h }))
+      sets[editMonth] = fn(sets[editMonth])
+      return { ...prev, habitSets: sets }
+    })
+  }
   function updHabit(id, key, val) {
-    setState(prev => ({ ...prev, habits: prev.habits.map(h => h.id === id ? { ...h, [key]: val } : h) }))
+    editHabits(arr => arr.map(h => h.id === id ? { ...h, [key]: val } : h))
   }
   function addHabit() {
-    setState(prev => ({
-      ...prev,
-      habits: [...prev.habits, { id: newHabitId(), name: '新しい項目', type: 'check', cat: 'survive' }],
-    }))
+    editHabits(arr => [...arr, { id: newHabitId(), name: '新しい項目', type: 'check', cat: 'survive' }])
   }
   function removeHabit(id) {
-    if (!window.confirm('この項目を削除する？（過去の記録も表示されなくなります）')) return
-    setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }))
+    if (!window.confirm('この項目を今月のリストから外す？\n（過去に記録した数字は消えません。前の月の表にはそのまま残ります）')) return
+    editHabits(arr => arr.filter(h => h.id !== id))
   }
   function moveHabit(id, dir) {
-    setState(prev => {
-      const arr = [...prev.habits]
-      const i = arr.findIndex(h => h.id === id)
+    editHabits(arr => {
+      const a = [...arr]
+      const i = a.findIndex(h => h.id === id)
       const j = i + dir
-      if (i < 0 || j < 0 || j >= arr.length) return prev
-      ;[arr[i], arr[j]] = [arr[j], arr[i]]
-      return { ...prev, habits: arr }
+      if (i < 0 || j < 0 || j >= a.length) return a
+      ;[a[i], a[j]] = [a[j], a[i]]
+      return a
     })
   }
 
@@ -79,21 +94,30 @@ export default function SettingsView({ state, setState }) {
     setTimeout(() => setMsg(''), 2500)
   }
 
+  const [ey, emo] = editMonth.split('-')
+
   return (
     <>
-      <div className="section-header">今日の最優先ミッション</div>
-      <div style={{ margin: '6px 16px 0' }}>
-        <textarea
-          className="memo-area"
-          style={{ minHeight: 60 }}
-          value={state.mission}
-          onChange={e => setMission(e.target.value)}
-          placeholder="今日これだけは、という一手"
-        />
+      <div className="section-header">記録する項目（月ごとに編集）</div>
+
+      {/* 月セレクタ */}
+      <div className="week-nav" style={{ marginTop: 6 }}>
+        <button className="week-arrow" onClick={() => setEditMonth(m => shiftMonth(m, -1))} aria-label="前の月">
+          <ChevronLeft size={20} />
+        </button>
+        <div className="week-title">
+          <span className="week-title-main">{Number(ey)}年 {Number(emo)}月</span>
+          <span className="week-title-sub">{editMonth === thisMonth ? '今月' : editMonth > thisMonth ? '未来の月' : '過去の月'}</span>
+        </div>
+        <button className="week-arrow" onClick={() => setEditMonth(m => shiftMonth(m, 1))} aria-label="次の月">
+          <ChevronRight size={20} />
+        </button>
+      </div>
+      <div className="alert alert-blue" style={{ marginTop: 8 }}>
+        ここで項目を変えても、<b>他の月の項目と過去の記録はそのまま残ります</b>。翌月ぶんを先に用意しておくのもOK。
       </div>
 
-      <div className="section-header">記録する項目（自由に編集）</div>
-      <div style={{ margin: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ margin: '10px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {habits.map((h, i) => (
           <div key={h.id} className="edit-task">
             <div className="edit-task-top">
@@ -130,7 +154,6 @@ export default function SettingsView({ state, setState }) {
               ><Hash size={11} style={{ verticalAlign: -1 }} /> 数字で記録</button>
             </div>
 
-            {/* number のときだけ 単位・目標 */}
             {h.type === 'number' && (
               <div className="input-row" style={{ marginTop: 8 }}>
                 <div className="input-group" style={{ marginBottom: 0 }}>
@@ -157,7 +180,6 @@ export default function SettingsView({ state, setState }) {
               />
             )}
 
-            {/* カテゴリ（色） */}
             <div className="cat-pills">
               {CATEGORIES.map(c => (
                 <button

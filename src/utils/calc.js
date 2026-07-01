@@ -1,4 +1,15 @@
-import { todayStr, SMOKING } from '../data/initialData.js'
+import { todayStr, SMOKING, HABIT_TEMPLATE } from '../data/initialData.js'
+
+// その月の項目リストを返す。無ければ直前の月から引き継ぎ、無ければテンプレ。
+export function habitsForMonth(state, month) {
+  const sets = state.habitSets || {}
+  if (sets[month]) return sets[month]
+  const earlier = Object.keys(sets).filter(k => k < month).sort()
+  if (earlier.length) return sets[earlier[earlier.length - 1]]
+  const all = Object.keys(sets).sort()
+  if (all.length) return sets[all[0]]
+  return HABIT_TEMPLATE
+}
 
 const KEY = 'stella-command-v1'
 

@@ -1,10 +1,10 @@
 import React from 'react'
-import { TrendingUp, Heart, BookOpen, Flame, CalendarClock } from 'lucide-react'
+import { TrendingUp, Heart, BookOpen, CalendarClock } from 'lucide-react'
 import { DEADLINES, TARGETS, todayStr } from '../data/initialData.js'
 import {
   calcStreak, weekRate, monthRate, daysBetween,
-  monthSum, totalSum, checkStreak, monthDoneCount, latestVal,
-  smokingStats, yen,
+  monthSum, totalSum, monthDoneCount, latestVal,
+  smokingStats, yen, habitsForMonth,
 } from '../utils/calc.js'
 
 function Ring({ pct, color, sub }) {
@@ -30,8 +30,8 @@ function Ring({ pct, color, sub }) {
 }
 
 export default function Dashboard({ state }) {
-  const habits = state.habits || []
   const days = state.days || {}
+  const habits = habitsForMonth(state, todayStr().slice(0, 7))
   const has = (id) => habits.some(h => h.id === id)
 
   const streak = calcStreak(days, habits)
@@ -50,18 +50,8 @@ export default function Dashboard({ state }) {
 
   return (
     <>
-      {/* ストリーク */}
-      <div className="streak-row">
-        <Flame size={30} color="var(--gold2)" />
-        <span className="streak-num">{streak}</span>
-        <div className="streak-info">
-          <div className="streak-title">連続達成日数</div>
-          <div className="streak-sub">目標つきの項目を全部クリアした日が続いてる数</div>
-        </div>
-      </div>
-
       {/* 達成率リング */}
-      <div className="card">
+      <div className="card" style={{ marginTop: 12 }}>
         <div className="card-head">
           <span className="card-title blue">達成率</span>
         </div>
@@ -155,6 +145,11 @@ export default function Dashboard({ state }) {
           </div>
         </>
       )}
+
+      {/* 連続達成（控えめに一番下） */}
+      <div style={{ margin: '22px 16px 0', color: 'var(--text3)', fontSize: 12, textAlign: 'center' }}>
+        全部達成できた日の連続：<b style={{ color: 'var(--text2)' }}>{streak}</b> 日
+      </div>
 
       <div style={{ height: 24 }} />
     </>
