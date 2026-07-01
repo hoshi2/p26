@@ -1,9 +1,16 @@
 import React, { useState, useRef } from 'react'
 import { Check, X, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react'
 import { todayStr, catColor } from '../data/initialData.js'
-import { weekdayIdx, dayVal, isDone, dayRate, shortNum, stepFor, habitsForMonth, checkVal, numVal } from '../utils/calc.js'
-import Journal from './Journal.jsx'
+import { weekdayIdx, dayVal, isDone, dayRate, shortNum, stepFor, stepForUnit, habitsForMonth, checkVal, numVal, sub2Val } from '../utils/calc.js'
 import '../styles/grid.css'
+
+// 単位から入力欄の見出しを決める
+function unitLabel(unit) {
+  if (unit === '円') return '金額'
+  if (unit === 'h') return '時間'
+  if (unit === 'kg') return '体重'
+  return '数値'
+}
 
 const DOW = ['日', '月', '火', '水', '木', '金', '土']
 
@@ -25,7 +32,7 @@ export default function GridView({ state, setState }) {
 
   const todayDay = Number(today.slice(8, 10))
   const [week, setWeek] = useState(Math.min(weeks.length - 1, Math.floor((todayDay - 1) / 7)))
-  const [edit, setEdit] = useState(null) // { date, habit, value, check }
+  const [edit, setEdit] = useState(null) // { date, habit, value, value2, check }
 
   const days = weeks[week] || []
   const first = days[0], last = days[days.length - 1]
@@ -51,29 +58,37 @@ export default function GridView({ state, setState }) {
     setVal(date, id, next)
   }
 
-  // 数値／記録／check+数値 の入力モーダルを開く
+  // 数値／記録／check+数値／Uber(金額+時間) の入力モーダルを開く
   function openEdit(date, habit) {
     const raw = dayVal(state.days, date, habit.id)
     const n = numVal(raw)
-    setEdit({ date, habit, value: n != null ? String(n) : '', check: checkVal(raw) })
+    const n2 = sub2Val(raw)
+    setEdit({ date, habit, value: n != null ? String(n) : '', value2: n2 != null ? String(n2) : '', check: checkVal(raw) })
   }
   const combined = edit && edit.habit.type === 'check' && edit.habit.num
+  const hasSub = edit && edit.habit.sub
   function saveEdit() {
     if (!edit) return
     const n = edit.value === '' ? undefined : Number(edit.value)
     if (combined) {
       if (edit.check === undefined && n === undefined) setVal(edit.date, edit.habit.id, undefined)
       else setVal(edit.date, edit.habit.id, { c: edit.check, n })
+    } else if (edit.habit.sub) {
+      const n2 = edit.value2 === '' ? undefined : Number(edit.value2)
+      const obj = {}
+      if (n !== undefined) obj.n = n
+      if (n2 !== undefined) obj.n2 = n2
+      setVal(edit.date, edit.habit.id, Object.keys(obj).length ? obj : undefined)
     } else {
       setVal(edit.date, edit.habit.id, n)
     }
     setEdit(null)
   }
-  function stepEdit(delta) {
+  function stepEdit(field, delta) {
     setEdit(e => {
-      const cur = Number(e.value || 0)
+      const cur = Number(e[field] || 0)
       const next = Math.max(0, Math.round((cur + delta) * 10) / 10)
-      return { ...e, value: String(next) }
+      return { ...e, [field]: String(next) }
     })
   }
 
@@ -217,8 +232,6 @@ export default function GridView({ state, setState }) {
         項目の追加や名前・目標の変更は「設定」タブでできます。
       </div>
 
-      {/* メモ（日付ごとに溜まる） */}
-      <Journal state={state} setState={setState} />
       <div style={{ height: 24 }} />
 
       {/* 数値入力モーダル */}
@@ -244,16 +257,36 @@ export default function GridView({ state, setState }) {
               </div>
             )}
 
+            {/* 1つ目の数値（Uberなら金額） */}
+            {hasSub && <div className="modal-row-label">{unitLabel(edit.habit.unit)}</div>}
             <div className="modal-input-row">
-              <button className="chip big" onClick={() => stepEdit(-stepFor(edit.habit))}><Minus size={16} /></button>
+              <button className="chip big" onClick={() => stepEdit('value', -stepFor(edit.habit))}><Minus size={16} /></button>
               <input
                 className="input-field big" type="number" inputMode="decimal" autoFocus
                 value={edit.value} placeholder="0"
                 onChange={e => setEdit(x => ({ ...x, value: e.target.value }))}
               />
               <span className="modal-unit">{edit.habit.unit}</span>
-              <button className="chip big" onClick={() => stepEdit(stepFor(edit.habit))}><Plus size={16} /></button>
+              <button className="chip big" onClick={() => stepEdit('value', stepFor(edit.habit))}><Plus size={16} /></button>
             </div>
+
+            {/* 2つ目の数値（Uberなら時間） */}
+            {hasSub && (
+              <>
+                <div className="modal-row-label" style={{ marginTop: 10 }}>{unitLabel(edit.habit.sub.unit)}</div>
+                <div className="modal-input-row">
+                  <button className="chip big" onClick={() => stepEdit('value2', -stepForUnit(edit.habit.sub.unit))}><Minus size={16} /></button>
+                  <input
+                    className="input-field big" type="number" inputMode="decimal"
+                    value={edit.value2} placeholder="0"
+                    onChange={e => setEdit(x => ({ ...x, value2: e.target.value }))}
+                  />
+                  <span className="modal-unit">{edit.habit.sub.unit}</span>
+                  <button className="chip big" onClick={() => stepEdit('value2', stepForUnit(edit.habit.sub.unit))}><Plus size={16} /></button>
+                </div>
+              </>
+            )}
+
             <div className="modal-btns">
               <button className="btn btn-ghost" onClick={() => { setVal(edit.date, edit.habit.id, undefined); setEdit(null) }}>クリア</button>
               <button className="btn btn-blue" onClick={saveEdit}>保存</button>

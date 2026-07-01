@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { LayoutGrid, Trophy, LineChart, Settings } from 'lucide-react'
+import { LayoutGrid, Trophy, Settings } from 'lucide-react'
 import { buildInitialState, migrateState, todayStr } from './data/initialData.js'
 import { loadState, saveState, weekdayJP } from './utils/calc.js'
 import GridView from './components/GridView.jsx'
 import Dashboard from './components/Dashboard.jsx'
-import LogView from './components/LogView.jsx'
 import SettingsView from './components/SettingsView.jsx'
 
 export default function App() {
@@ -27,7 +26,6 @@ export default function App() {
   const tabs = [
     { id: 'grid', label: '習慣', icon: LayoutGrid },
     { id: 'dash', label: '成果', icon: Trophy },
-    { id: 'log', label: '記録', icon: LineChart },
     { id: 'set', label: '設定', icon: Settings },
   ]
 
@@ -69,7 +67,6 @@ export default function App() {
       <main className="app-main">
         {tab === 'grid' && <GridView state={state} setState={setState} />}
         {tab === 'dash' && <Dashboard state={state} />}
-        {tab === 'log' && <LogView state={state} />}
         {tab === 'set' && <SettingsView state={state} setState={setState} />}
       </main>
     </div>

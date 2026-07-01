@@ -1,5 +1,5 @@
 // ========================================================
-// STELLA COMMAND - 初期設定（v4：月ごとの項目リスト＋3タイプ対応）
+// STELLA COMMAND - 初期設定（v5：Uber 金額＋時間 対応）
 // ========================================================
 
 // 習慣テンプレ（設定画面で自由に追加・変更・削除できる）
@@ -9,9 +9,10 @@
 //   unit   … 数値の単位（円 / h / kg …）
 //   target … number の1日の目標
 //   num    … check のとき「数値も記録する」なら true（unit を使う）
+//   sub    … number でもう1つ数値を記録するとき { unit }（Uberの時間など）
 //   cat    … 色分けカテゴリ
 export const HABIT_TEMPLATE = [
-  { id: 'uber',     name: 'Uber',   type: 'number', unit: '円', target: 15000, cat: 'survive' },
+  { id: 'uber',     name: 'Uber',   type: 'number', unit: '円', target: 15000, sub: { unit: 'h' }, cat: 'survive' },
   { id: 'study',    name: '宅建',   type: 'check',  num: true, unit: 'h', hint: '毎日やる', cat: 'study' },
   { id: 'workout',  name: '筋トレ', type: 'check',  cat: 'health' },
   { id: 'fx',       name: 'FX分析', type: 'check',  hint: 'エントリーしない', cat: 'future' },
@@ -59,11 +60,10 @@ function defTargets() {
 // 初期状態
 //   habitSets: { "2026-07": [ 項目... ] }   ← 月ごとに項目リストを持つ
 //   days:      { "2026-07-01": { v: { habitId: 値 } } }   ← 記録は日付ごと（項目を変えても消えない）
-//   journal:   { "2026-07-01": "メモ本文" }
 export function buildInitialState() {
   const month = todayStr().slice(0, 7)
   return {
-    version: 4,
+    version: 5,
     habitSets: { [month]: HABIT_TEMPLATE.map(h => ({ ...h })) },
     days: {},
     journal: {},
@@ -77,7 +77,7 @@ export function newHabitId() {
   return 'h' + Date.now().toString(36)
 }
 
-// 既定項目（宅建・体重・睡眠）を新タイプへ寄せる（過去の数値はそのまま活きる）
+// 既定項目を新タイプへ寄せる（過去の数値はそのまま活きる）
 function upgradeHabit(h) {
   if (h.id === 'study' && h.type === 'number') {
     return { ...h, type: 'check', num: true, unit: h.unit || 'h', target: undefined, hint: h.hint || '毎日やる' }
@@ -85,10 +85,13 @@ function upgradeHabit(h) {
   if ((h.id === 'weight' || h.id === 'sleep') && h.type === 'number') {
     return { ...h, type: 'record' }
   }
+  if (h.id === 'uber' && h.type === 'number' && !h.sub) {
+    return { ...h, sub: { unit: 'h' } }
+  }
   return h
 }
 
-// 古い保存データ（v1/v2/v3）を新形式（v4）へ変換。過去データを失わないための橋渡し。
+// 古い保存データ（v1〜v4）を新形式（v5）へ変換。過去データを失わないための橋渡し。
 export function migrateState(s) {
   if (!s) return null
   const month = todayStr().slice(0, 7)
@@ -100,12 +103,12 @@ export function migrateState(s) {
     }
     if (!s.journal) s.journal = {}
     if (!s.targets) s.targets = defTargets()
-    // v3 → v4：既定項目のタイプを更新
-    if (!(s.version >= 4)) {
+    // 既定項目のタイプ更新（v5未満なら一度だけ）
+    if (!(s.version >= 5)) {
       for (const m of Object.keys(s.habitSets)) {
         s.habitSets[m] = s.habitSets[m].map(upgradeHabit)
       }
-      s.version = 4
+      s.version = 5
     }
     return s
   }
@@ -126,7 +129,7 @@ export function migrateState(s) {
     for (const m of (s.metrics || [])) {
       if (!m || !m.date) continue
       const v = ensure(m.date).v
-      if (m.uberSales != null && m.uberSales !== '') v.uber = Number(m.uberSales)
+      if (m.uberSales != null && m.uberSales !== '') v.uber = { n: Number(m.uberSales), n2: m.uberHours != null && m.uberHours !== '' ? Number(m.uberHours) : undefined }
       if (m.studyMin != null && m.studyMin !== '') v.study = Math.round(Number(m.studyMin) / 6) / 10
       if (m.weight != null && m.weight !== '') v.weight = Number(m.weight)
       if (m.sleep != null && m.sleep !== '') v.sleep = Number(m.sleep)
@@ -138,7 +141,7 @@ export function migrateState(s) {
   if (s.memo && String(s.memo).trim()) journal[todayStr()] = String(s.memo)
 
   return {
-    version: 4,
+    version: 5,
     habitSets: { [month]: habits },
     days,
     journal,

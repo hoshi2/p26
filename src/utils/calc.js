@@ -80,6 +80,12 @@ export function numVal(v) {
   return Number(v)
 }
 
+// 生の値から「2つ目の数値（Uberの時間など）」を取り出す（無ければ null）
+export function sub2Val(v) {
+  if (v && typeof v === 'object') return (v.n2 == null || v.n2 === '') ? null : Number(v.n2)
+  return null
+}
+
 // 達成率の分母に数えるか（check、または目標つきnumber。record は数えない）
 export function countsForRate(habit) {
   return habit.type === 'check' || (habit.type === 'number' && habit.target != null && habit.target !== '')
@@ -178,6 +184,30 @@ export function totalSum(days, id) {
   return Math.round(sum * 10) / 10
 }
 
+// 2つ目の数値（Uber時間など）の月合計
+export function monthSub2Sum(days, id, month) {
+  const m = ym(month)
+  let sum = 0
+  for (const [date, log] of Object.entries(days || {})) {
+    if (!date.startsWith(m)) continue
+    const n = sub2Val(log?.v?.[id])
+    if (n !== null) sum += n
+  }
+  return Math.round(sum * 10) / 10
+}
+
+// number習慣で「値が入った日数」（Uberの稼働回数など）
+export function monthWorkedDays(days, id, month) {
+  const m = ym(month)
+  let n = 0
+  for (const [date, log] of Object.entries(days || {})) {
+    if (!date.startsWith(m)) continue
+    const v = numVal(log?.v?.[id])
+    if (v !== null && v > 0) n++
+  }
+  return n
+}
+
 // check習慣の達成日数
 export function monthDoneCount(days, id, month) {
   const m = ym(month)
@@ -224,10 +254,13 @@ export function shortNum(habit, v) {
   return String(n)
 }
 
-// number習慣の入力ステップ（単位から推定）
-export function stepFor(habit) {
-  if (habit.unit === '円') return 1000
-  if (habit.unit === 'kg') return 0.1
-  if (habit.unit === 'h') return 0.5
+// 単位から入力ステップを推定
+export function stepForUnit(unit) {
+  if (unit === '円') return 1000
+  if (unit === 'kg') return 0.1
+  if (unit === 'h') return 0.5
   return 1
+}
+export function stepFor(habit) {
+  return stepForUnit(habit.unit)
 }
