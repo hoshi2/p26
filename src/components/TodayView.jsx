@@ -1,7 +1,7 @@
 import React from 'react'
-import { Check, ShieldX } from 'lucide-react'
+import { Check, ShieldCheck, ShieldX } from 'lucide-react'
 import { AVOID_TEMPLATE, todayStr } from '../data/initialData.js'
-import { avoidStreak, dayRate, shiftDay } from '../utils/calc.js'
+import { avoidStreak, dayRate } from '../utils/calc.js'
 
 export default function TodayView({ state, setState }) {
   const today = todayStr()
@@ -19,18 +19,14 @@ export default function TodayView({ state, setState }) {
     })
   }
 
-  // やらないこと：「崩した」を記録 / 「リセット（また続ける）」
-  function breakAvoid(id) {
-    setState(prev => ({
-      ...prev,
-      avoid: { ...prev.avoid, [id]: { ...prev.avoid[id], brokeOn: today } },
-    }))
-  }
-  function resumeAvoid(id) {
-    setState(prev => ({
-      ...prev,
-      avoid: { ...prev.avoid, [id]: { brokeOn: today, since: today } },
-    }))
+  function setAvoid(id, val) {
+    setState(prev => {
+      const days = { ...prev.days }
+      const log = { ...(days[today] || { tasks: {} }) }
+      log.avoid = { ...(log.avoid || {}), [id]: val }
+      days[today] = log
+      return { ...prev, days }
+    })
   }
 
   function setMemo(v) {
@@ -69,28 +65,27 @@ export default function TodayView({ state, setState }) {
       </div>
 
       {/* やらないこと */}
-      <div className="section-header">やらないこと（守りの管理）</div>
+      <div className="section-header">やらないこと（今日の記録）</div>
       <div className="avoid-list">
         {AVOID_TEMPLATE.map(a => {
-          const entry = state.avoid[a.id]
-          const streak = avoidStreak(entry)
-          const brokeToday = entry?.brokeOn === today
+          const streak = avoidStreak(state.days, a.id)
+          const todayVal = state.days[today]?.avoid?.[a.id]
           return (
-            <div key={a.id} className={'avoid-item' + (brokeToday ? ' broke' : ' held')}>
-              <ShieldX size={16} color={brokeToday ? 'var(--red)' : 'var(--green)'} />
+            <div key={a.id} className={'avoid-item' + (todayVal === false ? ' broke' : todayVal === true ? ' held' : '')}>
+              {todayVal === false
+                ? <ShieldX size={16} color="var(--red)" />
+                : <ShieldCheck size={16} color={todayVal === true ? 'var(--green)' : 'var(--text3)'} />
+              }
               <span className="avoid-item-name">{a.name}</span>
-              {brokeToday ? (
-                <button className="btn btn-sm btn-green" onClick={() => resumeAvoid(a.id)}>
-                  仕切り直す
-                </button>
-              ) : (
-                <>
-                  <span className="avoid-streak">{streak}{a.unit}連続</span>
-                  <button className="btn btn-sm btn-ghost" onClick={() => breakAvoid(a.id)}>
-                    崩した
-                  </button>
-                </>
-              )}
+              <span className="avoid-streak">{streak}{a.unit}連続</span>
+              <button
+                className={'btn btn-sm ' + (todayVal === true ? 'btn-green' : 'btn-ghost')}
+                onClick={() => setAvoid(a.id, true)}
+              >守った</button>
+              <button
+                className={'btn btn-sm ' + (todayVal === false ? 'btn-red' : 'btn-ghost')}
+                onClick={() => setAvoid(a.id, false)}
+              >崩した</button>
             </div>
           )
         })}

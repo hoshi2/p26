@@ -1,7 +1,5 @@
 import React from 'react'
-import { yen } from '../utils/calc.js'
-import { TARGETS } from '../data/initialData.js'
-import { todayStr } from '../data/initialData.js'
+import { TARGETS, todayStr } from '../data/initialData.js'
 
 const DAILY_UBER_TARGET = 15000
 
@@ -21,7 +19,6 @@ function Mark({ val }) {
 
 export default function JulyView({ state }) {
   const today = todayStr()
-  const noSmoke = state.avoid?.['no-smoke']
 
   return (
     <>
@@ -65,13 +62,7 @@ export default function JulyView({ state }) {
 
               const workout = hasRecord ? (dayLog.tasks?.workout ? true : false) : null
               const fx = hasRecord ? (dayLog.tasks?.fx ? true : false) : null
-
-              // no-smoke: infer from avoid model
-              let smoke = null
-              if (!isFuture && noSmoke) {
-                if (noSmoke.brokeOn === date) smoke = false
-                else if (noSmoke.since && date >= noSmoke.since) smoke = true
-              }
+              const smoke = !isFuture ? (state.days[date]?.avoid?.['no-smoke'] ?? null) : null
 
               const uberOk = uberSales !== null && uberSales >= DAILY_UBER_TARGET
               const bg = isToday ? 'var(--blue-dim)' : dow === 0 ? '#fff5f5' : dow === 6 ? '#f0f5ff' : 'transparent'

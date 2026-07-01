@@ -53,17 +53,19 @@ export function buildInitialState() {
     missionDone: false,
     // 編集可能なタスク（設定画面でいじれる）
     tasks: DAILY_TEMPLATE.map(t => ({ ...t })),
-    // 日付ごとのログ: { "2026-06-28": { tasks:{uber:true,...}, ... } }
+    // 日付ごとのログ: { "2026-07-01": { tasks:{uber:true,...}, avoid:{'no-smoke':true,...} } }
     days: {},
-    // やらないこと: 最後に「守れなかった」日付。nullなら一度も崩してない
-    avoid: { 'no-trade': { brokeOn: null, since: todayStr() },
-             'no-smoke': { brokeOn: null, since: todayStr() } },
-    // 計測ログ（グラフ用）: [{date, weight, sleep, cigs, uberSales, uberHours, studyMin}]
+    // 計測ログ（グラフ用）: [{date, weight, sleep, uberSales, uberHours, studyMin}]
     metrics: [],
     // メモ
     memo: '',
     // 月間固定費・支出（手入力）
     money: { fixedCost: 0, monthSpend: 0 },
+    // 目標値（設定画面で変更可）
+    targets: {
+      uberMonthlyYen: TARGETS.uberMonthlyYen,
+      uberHourlyYen: TARGETS.uberHourlyYen,
+    },
   }
 }
 

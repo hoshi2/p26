@@ -35,15 +35,18 @@ export default function Dashboard({ state }) {
   const wRate = weekRate(state.days, tasks)
   const mRate = monthRate(state.days, tasks)
 
+  const uberMonthlyTarget = state.targets?.uberMonthlyYen ?? TARGETS.uberMonthlyYen
+  const uberHourlyTarget = state.targets?.uberHourlyYen ?? TARGETS.uberHourlyYen
+
   const uberSales = monthUberSales(state.metrics)
   const uberHours = monthUberHours(state.metrics)
-  const uberPct = Math.min(100, Math.round((uberSales / TARGETS.uberMonthlyYen) * 100))
+  const uberPct = Math.min(100, Math.round((uberSales / uberMonthlyTarget) * 100))
   const realHourly = uberHours > 0 ? Math.round(uberSales / uberHours) : 0
 
   const studyMonth = monthStudyHours(state.metrics)
   const studyTotal = totalStudyHours(state.metrics)
   const weight = latestWeight(state.metrics)
-  const smoke = smokingStats(state.avoid['no-smoke'])
+  const smoke = smokingStats(state.days)
 
   return (
     <>
@@ -63,8 +66,8 @@ export default function Dashboard({ state }) {
           <span className="card-title blue">達成率</span>
         </div>
         <div className="ring-wrap">
-          <Ring pct={wRate} color="var(--blue)" sub="WEEK" />
-          <Ring pct={mRate} color="var(--accent)" sub="MONTH" />
+          <Ring pct={wRate} color="var(--blue)" sub="週間" />
+          <Ring pct={mRate} color="var(--accent)" sub="月間" />
         </div>
       </div>
 
@@ -72,7 +75,7 @@ export default function Dashboard({ state }) {
       <div className="section-header">生存資金 — Uber</div>
       <div className="kpi-grid">
         <div className="kpi-card gold-border wide">
-          <div className="kpi-label">今月のUber売上 / 目標 {yen(TARGETS.uberMonthlyYen)}</div>
+          <div className="kpi-label">今月のUber売上 / 目標 {yen(uberMonthlyTarget)}</div>
           <div className="kpi-value gold">{yen(uberSales)}</div>
           <div className="progress-bar-wrap">
             <div className="progress-bar-fill gold" style={{ width: uberPct + '%' }} />
@@ -85,10 +88,10 @@ export default function Dashboard({ state }) {
         </div>
         <div className="kpi-card">
           <div className="kpi-label">実時給</div>
-          <div className={'kpi-value ' + (realHourly >= TARGETS.uberHourlyYen ? 'green' : '')}>
+          <div className={'kpi-value ' + (realHourly >= uberHourlyTarget ? 'green' : '')}>
             {realHourly > 0 ? yen(realHourly) : '—'}
           </div>
-          <div className="kpi-sub">目標 {yen(TARGETS.uberHourlyYen)}</div>
+          <div className="kpi-sub">目標 {yen(uberHourlyTarget)}</div>
         </div>
       </div>
 

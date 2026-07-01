@@ -1,19 +1,20 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
-import { Check } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { todayStr } from '../data/initialData.js'
-import { series, yen } from '../utils/calc.js'
+import { series, yen, shiftDay } from '../utils/calc.js'
 
-function getTodayMetric(metrics, date) {
+function getMetric(metrics, date) {
   return metrics.find(m => m.date === date) || { date }
 }
 
 export default function LogView({ state, setState }) {
   const today = todayStr()
-  const existing = getTodayMetric(state.metrics, today)
+  const [editDate, setEditDate] = useState(today)
 
+  const existing = getMetric(state.metrics, editDate)
   const [form, setForm] = useState({
     weight: existing.weight ?? '',
     sleep: existing.sleep ?? '',
@@ -22,6 +23,17 @@ export default function LogView({ state, setState }) {
     studyMin: existing.studyMin ?? '',
   })
   const [savedFlash, setSavedFlash] = useState(false)
+
+  useEffect(() => {
+    const ex = getMetric(state.metrics, editDate)
+    setForm({
+      weight: ex.weight ?? '',
+      sleep: ex.sleep ?? '',
+      uberSales: ex.uberSales ?? '',
+      uberHours: ex.uberHours ?? '',
+      studyMin: ex.studyMin ?? '',
+    })
+  }, [editDate])
 
   function upd(k, v) { setForm(f => ({ ...f, [k]: v })) }
 
@@ -36,9 +48,9 @@ export default function LogView({ state, setState }) {
   function saveLog() {
     setState(prev => {
       const metrics = [...prev.metrics]
-      const idx = metrics.findIndex(m => m.date === today)
+      const idx = metrics.findIndex(m => m.date === editDate)
       const entry = {
-        date: today,
+        date: editDate,
         weight: form.weight === '' ? undefined : Number(form.weight),
         sleep: form.sleep === '' ? undefined : Number(form.sleep),
         uberSales: form.uberSales === '' ? undefined : Number(form.uberSales),
@@ -54,14 +66,32 @@ export default function LogView({ state, setState }) {
     setTimeout(() => setSavedFlash(false), 1500)
   }
 
+  const isToday = editDate === today
+  const dateLabel = editDate.slice(5).replace('-', '/')
+
   const weightData = series(state.metrics, 'weight')
+  const sleepData = series(state.metrics, 'sleep')
   const uberData = state.metrics
     .filter(m => m.uberSales)
     .map(m => ({ date: m.date.slice(5), uberSales: Number(m.uberSales) }))
 
   return (
     <>
-      <div className="section-header">今日の記録 — {today.slice(5).replace('-', '/')}</div>
+      {/* 日付ナビ */}
+      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>{isToday ? '今日の記録' : '記録を修正'} — {dateLabel}</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, margin: '4px 16px 12px' }}>
+        <button className="btn btn-sm btn-ghost" onClick={() => setEditDate(d => shiftDay(d, -1))}>
+          <ChevronLeft size={14} /> 前日
+        </button>
+        <span style={{ color: 'var(--text2)', fontSize: 13, minWidth: 60, textAlign: 'center' }}>
+          {isToday ? '今日' : dateLabel}
+        </span>
+        <button className="btn btn-sm btn-ghost" onClick={() => setEditDate(d => shiftDay(d, 1))} disabled={editDate >= today}>
+          翌日 <ChevronRight size={14} />
+        </button>
+      </div>
 
       {/* 体重 */}
       <div className="card">
@@ -124,7 +154,7 @@ export default function LogView({ state, setState }) {
 
       <div style={{ margin: '14px 16px 0' }}>
         <button className={'btn btn-full ' + (savedFlash ? 'btn-green' : 'btn-blue')} onClick={saveLog}>
-          {savedFlash ? <><Check size={15} /> 記録した</> : '今日の記録を保存'}
+          {savedFlash ? <><Check size={15} /> 記録した</> : (isToday ? '今日の記録を保存' : `${dateLabel} の記録を保存`)}
         </button>
       </div>
 
@@ -145,6 +175,25 @@ export default function LogView({ state, setState }) {
         </div>
       ) : (
         <div className="chart-empty">体重を2日分以上記録するとグラフが出る</div>
+      )}
+
+      {/* 睡眠グラフ */}
+      <div className="section-header">睡眠時間の推移</div>
+      {sleepData.length >= 2 ? (
+        <div className="chart-wrap">
+          <ResponsiveContainer width="100%" height={180}>
+            <LineChart data={sleepData} margin={{ top: 8, right: 20, left: -10, bottom: 0 }}>
+              <CartesianGrid stroke="#e2e7f0" vertical={false} />
+              <XAxis dataKey="date" tick={{ fill: '#8a92a6', fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis domain={[0, 'auto']} tick={{ fill: '#8a92a6', fontSize: 10 }} tickLine={false} axisLine={false} width={36} />
+              <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid #d2dae6', borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: '#525a6e' }} formatter={v => `${v}h`} />
+              <Line type="monotone" dataKey="sleep" stroke="var(--accent)" strokeWidth={2} dot={{ r: 2 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="chart-empty">睡眠を2日分以上記録するとグラフが出る</div>
       )}
 
       {/* Uber売上グラフ */}

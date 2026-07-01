@@ -91,21 +91,33 @@ export function monthRate(days, tasks = DAILY_TEMPLATE) {
   return Math.round(sum / 30)
 }
 
-// ---- やらないこと：継続日数 ----
-export function avoidStreak(avoidEntry) {
-  if (!avoidEntry) return 0
-  const start = avoidEntry.brokeOn || avoidEntry.since
-  if (!start) return 0
-  return Math.max(0, daysBetween(start, todayStr()))
+// ---- やらないこと：連続日数（days = state.days, avoidId = 'no-smoke' etc）----
+export function avoidStreak(days, avoidId) {
+  let streak = 0
+  let cursor = todayStr()
+  for (let i = 0; i < 400; i++) {
+    const val = days?.[cursor]?.avoid?.[avoidId]
+    if (val === true) {
+      streak++
+      cursor = shiftDay(cursor, -1)
+    } else if (val === false) {
+      break
+    } else {
+      // undefined = まだ記録なし
+      if (i === 0) { cursor = shiftDay(cursor, -1); continue }
+      break
+    }
+  }
+  return streak
 }
 
 // ---- 禁煙：節約額・本数 ----
-export function smokingStats(avoidEntry) {
-  const days = avoidStreak(avoidEntry)
-  const cigsAvoided = days * SMOKING.cigsPerDayBefore
+export function smokingStats(days) {
+  const streak = avoidStreak(days, 'no-smoke')
+  const cigsAvoided = streak * SMOKING.cigsPerDayBefore
   const yenPerCig = SMOKING.pricePerPack / SMOKING.cigsPerPack
   const saved = Math.round(cigsAvoided * yenPerCig)
-  return { days, cigsAvoided, saved }
+  return { days: streak, cigsAvoided, saved }
 }
 
 // ---- メトリクスから特定キーの時系列を取り出す（グラフ用）----

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { Download, Upload, RotateCcw, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
-import { buildInitialState, newTaskId, CATEGORIES } from '../data/initialData.js'
+import { buildInitialState, newTaskId, CATEGORIES, TARGETS } from '../data/initialData.js'
 import { yen } from '../utils/calc.js'
 
 export default function SettingsView({ state, setState }) {
@@ -10,6 +10,9 @@ export default function SettingsView({ state, setState }) {
   function setMission(v) { setState(prev => ({ ...prev, mission: v })) }
   function setMoney(k, v) {
     setState(prev => ({ ...prev, money: { ...prev.money, [k]: v === '' ? 0 : Number(v) } }))
+  }
+  function setTarget(k, v) {
+    setState(prev => ({ ...prev, targets: { ...(prev.targets || {}), [k]: v === '' ? 0 : Number(v) } }))
   }
 
   // ---- タスク編集 ----
@@ -141,6 +144,22 @@ export default function SettingsView({ state, setState }) {
         <button className="btn btn-ghost btn-full" onClick={addTask}>
           <Plus size={15} /> タスクを追加
         </button>
+      </div>
+
+      <div className="section-header">Uber 目標（設定）</div>
+      <div className="kpi-grid">
+        <div className="input-group" style={{ margin: 0 }}>
+          <label className="input-label" style={{ paddingLeft: 4 }}>月間売上目標（円）</label>
+          <input className="input-field" type="number" inputMode="numeric"
+            value={state.targets?.uberMonthlyYen ?? TARGETS.uberMonthlyYen} placeholder="300000"
+            onChange={e => setTarget('uberMonthlyYen', e.target.value)} />
+        </div>
+        <div className="input-group" style={{ margin: 0 }}>
+          <label className="input-label" style={{ paddingLeft: 4 }}>時給目標（円）</label>
+          <input className="input-field" type="number" inputMode="numeric"
+            value={state.targets?.uberHourlyYen ?? TARGETS.uberHourlyYen} placeholder="2500"
+            onChange={e => setTarget('uberHourlyYen', e.target.value)} />
+        </div>
       </div>
 
       <div className="section-header">お金（手入力）</div>
