@@ -14,9 +14,6 @@ export default function SettingsView({ state, setState }) {
   const [msg, setMsg] = useState('')
   const [editMonth, setEditMonth] = useState(todayStr().slice(0, 7))
 
-  function setMoney(k, v) {
-    setState(prev => ({ ...prev, money: { ...prev.money, [k]: v === '' ? 0 : Number(v) } }))
-  }
   function setTarget(k, v) {
     setState(prev => ({ ...prev, targets: { ...(prev.targets || {}), [k]: v === '' ? 0 : Number(v) } }))
   }
@@ -213,25 +210,6 @@ export default function SettingsView({ state, setState }) {
             value={state.targets?.uberHourlyYen ?? TARGETS.uberHourlyYen} placeholder="2500"
             onChange={e => setTarget('uberHourlyYen', e.target.value)} />
         </div>
-      </div>
-
-      <div className="section-header">お金（手入力）</div>
-      <div className="kpi-grid">
-        <div className="input-group" style={{ margin: 0 }}>
-          <label className="input-label" style={{ paddingLeft: 4 }}>固定費 / 月</label>
-          <input className="input-field" type="number" inputMode="numeric"
-            value={state.money.fixedCost || ''} placeholder="0"
-            onChange={e => setMoney('fixedCost', e.target.value)} />
-        </div>
-        <div className="input-group" style={{ margin: 0 }}>
-          <label className="input-label" style={{ paddingLeft: 4 }}>今月の支出</label>
-          <input className="input-field" type="number" inputMode="numeric"
-            value={state.money.monthSpend || ''} placeholder="0"
-            onChange={e => setMoney('monthSpend', e.target.value)} />
-        </div>
-      </div>
-      <div className="alert alert-blue">
-        借金やFXの細かい管理は <b>STELLA FINANCE</b> 側に任せる設計。ここは「今を生きるお金」だけ淡々と。
       </div>
 
       <div className="section-header">バックアップ・同期</div>
