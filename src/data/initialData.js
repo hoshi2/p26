@@ -1,21 +1,23 @@
 // ========================================================
-// STELLA COMMAND - 初期設定（v3：月ごとの項目リスト対応）
+// STELLA COMMAND - 初期設定（v4：月ごとの項目リスト＋3タイプ対応）
 // ========================================================
 
 // 習慣テンプレ（設定画面で自由に追加・変更・削除できる）
-//   type: 'check'  … ✓/✗ の2択（筋トレ・FX・禁煙 など）
-//         'number' … 数値入力（Uber売上・宅建時間・体重 など）
-//   unit   … number のときの単位（円 / h / kg …）
-//   target … 1日の目標（達成判定に使う。空なら「記録するだけ」）
+//   type: 'check'  … ✓/✗（達成率に入る）。num:true にすると数値も一緒に記録できる
+//         'number' … 数値＋目標（目標以上で達成。達成率に入る）
+//         'record' … 数値の記録だけ（達成率に入れない。体重など）
+//   unit   … 数値の単位（円 / h / kg …）
+//   target … number の1日の目標
+//   num    … check のとき「数値も記録する」なら true（unit を使う）
 //   cat    … 色分けカテゴリ
 export const HABIT_TEMPLATE = [
   { id: 'uber',     name: 'Uber',   type: 'number', unit: '円', target: 15000, cat: 'survive' },
-  { id: 'study',    name: '宅建',   type: 'number', unit: 'h',  target: 2,     cat: 'study'   },
+  { id: 'study',    name: '宅建',   type: 'check',  num: true, unit: 'h', hint: '毎日やる', cat: 'study' },
   { id: 'workout',  name: '筋トレ', type: 'check',  cat: 'health' },
   { id: 'fx',       name: 'FX分析', type: 'check',  hint: 'エントリーしない', cat: 'future' },
   { id: 'no-smoke', name: '禁煙',   type: 'check',  hint: 'タバコ吸わない',   cat: 'health' },
-  { id: 'weight',   name: '体重',   type: 'number', unit: 'kg', cat: 'health' },
-  { id: 'sleep',    name: '睡眠',   type: 'number', unit: 'h',  cat: 'health' },
+  { id: 'weight',   name: '体重',   type: 'record', unit: 'kg', cat: 'health' },
+  { id: 'sleep',    name: '睡眠',   type: 'record', unit: 'h',  cat: 'health' },
 ]
 
 // 期限のあるもの（カウントダウン表示）
@@ -61,7 +63,7 @@ function defTargets() {
 export function buildInitialState() {
   const month = todayStr().slice(0, 7)
   return {
-    version: 3,
+    version: 4,
     habitSets: { [month]: HABIT_TEMPLATE.map(h => ({ ...h })) },
     days: {},
     journal: {},
@@ -75,18 +77,36 @@ export function newHabitId() {
   return 'h' + Date.now().toString(36)
 }
 
-// 古い保存データ（v1/v2）を新形式（v3）へ変換。過去データを失わないための橋渡し。
+// 既定項目（宅建・体重・睡眠）を新タイプへ寄せる（過去の数値はそのまま活きる）
+function upgradeHabit(h) {
+  if (h.id === 'study' && h.type === 'number') {
+    return { ...h, type: 'check', num: true, unit: h.unit || 'h', target: undefined, hint: h.hint || '毎日やる' }
+  }
+  if ((h.id === 'weight' || h.id === 'sleep') && h.type === 'number') {
+    return { ...h, type: 'record' }
+  }
+  return h
+}
+
+// 古い保存データ（v1/v2/v3）を新形式（v4）へ変換。過去データを失わないための橋渡し。
 export function migrateState(s) {
   if (!s) return null
   const month = todayStr().slice(0, 7)
 
-  // すでに v3
+  // すでに v3 以上
   if (s.version >= 3) {
     if (!s.habitSets || Object.keys(s.habitSets).length === 0) {
       s.habitSets = { [month]: (s.habits || HABIT_TEMPLATE).map(h => ({ ...h })) }
     }
     if (!s.journal) s.journal = {}
     if (!s.targets) s.targets = defTargets()
+    // v3 → v4：既定項目のタイプを更新
+    if (!(s.version >= 4)) {
+      for (const m of Object.keys(s.habitSets)) {
+        s.habitSets[m] = s.habitSets[m].map(upgradeHabit)
+      }
+      s.version = 4
+    }
     return s
   }
 
@@ -113,12 +133,12 @@ export function migrateState(s) {
     }
   }
 
-  const habits = (s.habits && s.habits.length ? s.habits : HABIT_TEMPLATE).map(h => ({ ...h }))
+  const habits = (s.habits && s.habits.length ? s.habits : HABIT_TEMPLATE).map(h => ({ ...h })).map(upgradeHabit)
   const journal = {}
   if (s.memo && String(s.memo).trim()) journal[todayStr()] = String(s.memo)
 
   return {
-    version: 3,
+    version: 4,
     habitSets: { [month]: habits },
     days,
     journal,

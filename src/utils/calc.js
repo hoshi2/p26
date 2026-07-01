@@ -58,12 +58,29 @@ export function weekdayIdx(str) {
 }
 
 // ---- 習慣まわり ----
-// その日の値を取り出す
+// その日の生の値を取り出す（scalar か {c,n} オブジェクト）
 export function dayVal(days, date, id) {
   return days?.[date]?.v?.[id]
 }
 
-// 達成率の分母に数えるか（check、または目標つきnumber）
+// 生の値から「チェック状態」を取り出す（true/false/undefined）
+export function checkVal(v) {
+  if (v === true) return true
+  if (v === false) return false
+  if (v && typeof v === 'object') return v.c === true ? true : v.c === false ? false : undefined
+  return undefined
+}
+
+// 生の値から「数値」を取り出す（無ければ null）
+export function numVal(v) {
+  if (v == null || v === '' || v === true || v === false) return null
+  if (typeof v === 'object') {
+    return (v.n == null || v.n === '') ? null : Number(v.n)
+  }
+  return Number(v)
+}
+
+// 達成率の分母に数えるか（check、または目標つきnumber。record は数えない）
 export function countsForRate(habit) {
   return habit.type === 'check' || (habit.type === 'number' && habit.target != null && habit.target !== '')
 }
@@ -71,9 +88,12 @@ export function countsForRate(habit) {
 // その習慣がその日に「達成」したか
 export function isDone(habit, val) {
   if (val === undefined || val === null || val === '') return false
-  if (habit.type === 'check') return val === true
+  if (habit.type === 'check') return checkVal(val) === true
+  if (habit.type === 'record') return false
   // number
-  if (habit.target != null && habit.target !== '') return Number(val) >= Number(habit.target)
+  const n = numVal(val)
+  if (n === null) return false
+  if (habit.target != null && habit.target !== '') return n >= Number(habit.target)
   return true // 目標なしの数値は「入力があれば達成扱い」
 }
 
@@ -119,11 +139,11 @@ export function checkStreak(days, id) {
   let streak = 0
   let cursor = todayStr()
   for (let i = 0; i < 400; i++) {
-    const val = dayVal(days, cursor, id)
-    if (val === true) {
+    const c = checkVal(dayVal(days, cursor, id))
+    if (c === true) {
       streak++
       cursor = shiftDay(cursor, -1)
-    } else if (val === false) {
+    } else if (c === false) {
       break
     } else {
       if (i === 0) { cursor = shiftDay(cursor, -1); continue }
@@ -142,8 +162,8 @@ export function monthSum(days, id, month) {
   let sum = 0
   for (const [date, log] of Object.entries(days || {})) {
     if (!date.startsWith(m)) continue
-    const v = log?.v?.[id]
-    if (v != null && v !== '' && v !== false && v !== true) sum += Number(v)
+    const n = numVal(log?.v?.[id])
+    if (n !== null) sum += n
   }
   return Math.round(sum * 10) / 10
 }
@@ -152,8 +172,8 @@ export function monthSum(days, id, month) {
 export function totalSum(days, id) {
   let sum = 0
   for (const log of Object.values(days || {})) {
-    const v = log?.v?.[id]
-    if (v != null && v !== '' && v !== false && v !== true) sum += Number(v)
+    const n = numVal(log?.v?.[id])
+    if (n !== null) sum += n
   }
   return Math.round(sum * 10) / 10
 }
@@ -163,30 +183,24 @@ export function monthDoneCount(days, id, month) {
   const m = ym(month)
   let n = 0
   for (const [date, log] of Object.entries(days || {})) {
-    if (date.startsWith(m) && log?.v?.[id] === true) n++
+    if (date.startsWith(m) && checkVal(log?.v?.[id]) === true) n++
   }
   return n
 }
 
 // number習慣の最新値
 export function latestVal(days, id) {
-  const dates = Object.keys(days || {}).filter(d => {
-    const v = days[d]?.v?.[id]
-    return v != null && v !== '' && v !== false && v !== true
-  }).sort()
+  const dates = Object.keys(days || {}).filter(d => numVal(days[d]?.v?.[id]) !== null).sort()
   const last = dates[dates.length - 1]
-  return last ? Number(days[last].v[id]) : null
+  return last ? numVal(days[last].v[id]) : null
 }
 
 // number習慣の時系列（グラフ用）
 export function numberSeries(days, id) {
   return Object.keys(days || {})
-    .filter(d => {
-      const v = days[d]?.v?.[id]
-      return v != null && v !== '' && v !== false && v !== true
-    })
+    .filter(d => numVal(days[d]?.v?.[id]) !== null)
     .sort()
-    .map(d => ({ date: d.slice(5), value: Number(days[d].v[id]) }))
+    .map(d => ({ date: d.slice(5), value: numVal(days[d].v[id]) }))
 }
 
 // 禁煙：節約額・本数
@@ -204,8 +218,8 @@ export function yen(n) {
 
 // number習慣の値をセル用に短く整形（円→k表記）
 export function shortNum(habit, v) {
-  if (v == null || v === '') return ''
-  const n = Number(v)
+  const n = numVal(v)
+  if (n === null) return ''
   if (habit.unit === '円') return (Math.round(n / 100) / 10) + 'k'
   return String(n)
 }

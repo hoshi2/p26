@@ -110,6 +110,7 @@
 .hg-num.empty { color: var(--text3); font-weight: 400; border-style: dashed; }
 .hg-num.ok { color: var(--green); border-color: #aadcc8; background: var(--green-dim); }
 .hg-num.miss { color: var(--red); border-color: #f0cccc; }
+.hg-num.rec { color: var(--text2); border-color: var(--border2); background: var(--bg4); }
 
 .hg-rate-row td { border-top: 2px solid var(--border2); background: var(--bg3); }
 .hg-rate-row .hg-name { background: var(--bg3); }
@@ -138,11 +139,23 @@
   display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
 }
 .modal-date { font-family: 'Space Grotesk', sans-serif; font-size: 13px; color: var(--text3); font-weight: 500; }
+.modal-check-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.modal-check {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 10px; border-radius: 9px; cursor: pointer;
+  font-family: 'Noto Sans JP', sans-serif; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border2); background: var(--bg3); color: var(--text3);
+}
+.modal-check.yes.on { background: var(--green); border-color: var(--green); color: #fff; }
+.modal-check.no.on { background: var(--red-dim); border-color: #e9a9a9; color: var(--red); }
 .modal-input-row { display: flex; align-items: center; gap: 8px; }
 .modal-unit { font-size: 13px; color: var(--text3); }
 .chip.big { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; padding: 0; }
 .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
 .modal-btns .btn { flex: 1; }
+
+/* 設定：タイプの説明 */
+.type-hint { font-size: 10px; color: var(--text3); margin-top: 5px; padding-left: 2px; }
 
 /* メモ（日付ごとに溜まる） */
 .jr-list { margin: 6px 16px 0; display: flex; flex-direction: column; gap: 8px; }

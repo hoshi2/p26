@@ -137,7 +137,7 @@ export default function SettingsView({ state, setState }) {
               </button>
             </div>
 
-            {/* タイプ切り替え */}
+            {/* タイプ切り替え（3種類） */}
             <div className="cat-pills" style={{ marginTop: 8 }}>
               <button
                 className={'cat-pill' + (h.type === 'check' ? ' active' : '')}
@@ -149,8 +149,19 @@ export default function SettingsView({ state, setState }) {
                 style={h.type === 'number' ? { borderColor: 'var(--blue)', color: 'var(--blue2)' } : {}}
                 onClick={() => updHabit(h.id, 'type', 'number')}
               ><Hash size={11} style={{ verticalAlign: -1 }} /> 数字で記録</button>
+              <button
+                className={'cat-pill' + (h.type === 'record' ? ' active' : '')}
+                style={h.type === 'record' ? { borderColor: 'var(--text2)', color: 'var(--text2)' } : {}}
+                onClick={() => updHabit(h.id, 'type', 'record')}
+              ><Hash size={11} style={{ verticalAlign: -1 }} /> 記録だけ</button>
+            </div>
+            <div className="type-hint">
+              {h.type === 'check' && '✓/✗ で達成率に入ります'}
+              {h.type === 'number' && '目標以上で達成。達成率に入ります'}
+              {h.type === 'record' && '記録するだけ。達成率には入りません（体重など）'}
             </div>
 
+            {/* number：単位＋目標 */}
             {h.type === 'number' && (
               <div className="input-row" style={{ marginTop: 8 }}>
                 <div className="input-group" style={{ marginBottom: 0 }}>
@@ -167,14 +178,43 @@ export default function SettingsView({ state, setState }) {
                 </div>
               </div>
             )}
+
+            {/* record：単位のみ */}
+            {h.type === 'record' && (
+              <div className="input-group" style={{ marginTop: 8, marginBottom: 0 }}>
+                <label className="input-label">単位</label>
+                <input className="input-field" style={{ fontSize: 13 }}
+                  value={h.unit || ''} placeholder="kg / h / 回"
+                  onChange={e => updHabit(h.id, 'unit', e.target.value)} />
+              </div>
+            )}
+
+            {/* check：補足＋「数値も記録」 */}
             {h.type === 'check' && (
-              <input
-                className="input-field"
-                style={{ fontFamily: 'inherit', fontSize: 12, marginTop: 8 }}
-                value={h.hint || ''}
-                onChange={e => updHabit(h.id, 'hint', e.target.value)}
-                placeholder="ひとこと補足（例：エントリーしない。空でもOK）"
-              />
+              <>
+                <input
+                  className="input-field"
+                  style={{ fontFamily: 'inherit', fontSize: 12, marginTop: 8 }}
+                  value={h.hint || ''}
+                  onChange={e => updHabit(h.id, 'hint', e.target.value)}
+                  placeholder="ひとこと補足（例：エントリーしない。空でもOK）"
+                />
+                <div className="cat-pills" style={{ marginTop: 8 }}>
+                  <button
+                    className={'cat-pill' + (h.num ? ' active' : '')}
+                    style={h.num ? { borderColor: 'var(--blue)', color: 'var(--blue2)' } : {}}
+                    onClick={() => updHabit(h.id, 'num', !h.num)}
+                  ><Hash size={11} style={{ verticalAlign: -1 }} /> 数値も記録する{h.num ? '（ON）' : ''}</button>
+                </div>
+                {h.num && (
+                  <div className="input-group" style={{ marginTop: 8, marginBottom: 0 }}>
+                    <label className="input-label">記録する数値の単位（達成率には影響しない）</label>
+                    <input className="input-field" style={{ fontSize: 13 }}
+                      value={h.unit || ''} placeholder="h / 回 / ページ"
+                      onChange={e => updHabit(h.id, 'unit', e.target.value)} />
+                  </div>
+                )}
+              </>
             )}
 
             <div className="cat-pills">

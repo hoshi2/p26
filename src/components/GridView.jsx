@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { Check, X, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react'
 import { todayStr, catColor } from '../data/initialData.js'
-import { weekdayIdx, dayVal, isDone, dayRate, shortNum, stepFor, habitsForMonth } from '../utils/calc.js'
+import { weekdayIdx, dayVal, isDone, dayRate, shortNum, stepFor, habitsForMonth, checkVal, numVal } from '../utils/calc.js'
 import Journal from './Journal.jsx'
 import '../styles/grid.css'
 
@@ -25,7 +25,7 @@ export default function GridView({ state, setState }) {
 
   const todayDay = Number(today.slice(8, 10))
   const [week, setWeek] = useState(Math.min(weeks.length - 1, Math.floor((todayDay - 1) / 7)))
-  const [edit, setEdit] = useState(null) // { date, habit, value }
+  const [edit, setEdit] = useState(null) // { date, habit, value, check }
 
   const days = weeks[week] || []
   const first = days[0], last = days[days.length - 1]
@@ -44,21 +44,29 @@ export default function GridView({ state, setState }) {
     })
   }
 
-  // check：未 → ✓ → ✗ → 未 を巡回
+  // check（数値なし）：未 → ✓ → ✗ → 未 を巡回
   function cycleCheck(date, id) {
     const cur = dayVal(state.days, date, id)
     const next = cur === undefined ? true : cur === true ? false : undefined
     setVal(date, id, next)
   }
 
-  function openNumber(date, habit) {
-    const cur = dayVal(state.days, date, habit.id)
-    setEdit({ date, habit, value: cur != null ? String(cur) : '' })
+  // 数値／記録／check+数値 の入力モーダルを開く
+  function openEdit(date, habit) {
+    const raw = dayVal(state.days, date, habit.id)
+    const n = numVal(raw)
+    setEdit({ date, habit, value: n != null ? String(n) : '', check: checkVal(raw) })
   }
-  function saveNumber() {
+  const combined = edit && edit.habit.type === 'check' && edit.habit.num
+  function saveEdit() {
     if (!edit) return
-    const v = edit.value === '' ? undefined : Number(edit.value)
-    setVal(edit.date, edit.habit.id, v)
+    const n = edit.value === '' ? undefined : Number(edit.value)
+    if (combined) {
+      if (edit.check === undefined && n === undefined) setVal(edit.date, edit.habit.id, undefined)
+      else setVal(edit.date, edit.habit.id, { c: edit.check, n })
+    } else {
+      setVal(edit.date, edit.habit.id, n)
+    }
     setEdit(null)
   }
   function stepEdit(delta) {
@@ -138,27 +146,47 @@ export default function GridView({ state, setState }) {
                 {days.map(dd => {
                   const isToday = dd.date === today
                   const val = dayVal(state.days, dd.date, h.id)
-                  const done = isDone(h, val)
-                  if (h.type === 'check') {
+                  const cellCls = 'hg-cell' + (isToday ? ' today' : '')
+
+                  // ①「できた/できない」のみ：タップで巡回
+                  if (h.type === 'check' && !h.num) {
+                    const c = checkVal(val)
                     return (
-                      <td key={dd.d} className={'hg-cell' + (isToday ? ' today' : '')}>
+                      <td key={dd.d} className={cellCls}>
                         <button
-                          className={'hg-check' + (val === true ? ' yes' : val === false ? ' no' : '')}
+                          className={'hg-check' + (c === true ? ' yes' : c === false ? ' no' : '')}
                           onClick={() => cycleCheck(dd.date, h.id)}
                           aria-label={h.name}
                         >
-                          {val === true ? <Check size={15} strokeWidth={3} /> : val === false ? <X size={14} strokeWidth={3} /> : ''}
+                          {c === true ? <Check size={15} strokeWidth={3} /> : c === false ? <X size={14} strokeWidth={3} /> : ''}
                         </button>
                       </td>
                     )
                   }
+
+                  // ②「できた/できない＋数値」：数値を表示、色はチェック状態
+                  if (h.type === 'check' && h.num) {
+                    const c = checkVal(val)
+                    const n = numVal(val)
+                    const has = c !== undefined || n !== null
+                    const cls = !has ? ' empty' : c === true ? ' ok' : c === false ? ' miss' : ''
+                    return (
+                      <td key={dd.d} className={cellCls}>
+                        <button className={'hg-num' + cls} onClick={() => openEdit(dd.date, h)}>
+                          {n !== null ? shortNum(h, val) : c === true ? '✓' : c === false ? '✗' : '＋'}
+                        </button>
+                      </td>
+                    )
+                  }
+
+                  // ③ 数値 / 記録
+                  const n = numVal(val)
+                  const isRecord = h.type === 'record'
+                  const cls = n === null ? ' empty' : isRecord ? ' rec' : isDone(h, val) ? ' ok' : ' miss'
                   return (
-                    <td key={dd.d} className={'hg-cell' + (isToday ? ' today' : '')}>
-                      <button
-                        className={'hg-num' + (val == null || val === '' ? ' empty' : done ? ' ok' : ' miss')}
-                        onClick={() => openNumber(dd.date, h)}
-                      >
-                        {val == null || val === '' ? '＋' : shortNum(h, val)}
+                    <td key={dd.d} className={cellCls}>
+                      <button className={'hg-num' + cls} onClick={() => openEdit(dd.date, h)}>
+                        {n === null ? '＋' : shortNum(h, val)}
                       </button>
                     </td>
                   )
@@ -201,6 +229,21 @@ export default function GridView({ state, setState }) {
               {edit.habit.name}
               <span className="modal-date">{edit.date.slice(5).replace('-', '/')}</span>
             </div>
+
+            {/* できた/できない（数値つき check のとき） */}
+            {combined && (
+              <div className="modal-check-row">
+                <button
+                  className={'modal-check yes' + (edit.check === true ? ' on' : '')}
+                  onClick={() => setEdit(x => ({ ...x, check: x.check === true ? undefined : true }))}
+                ><Check size={15} strokeWidth={3} /> できた</button>
+                <button
+                  className={'modal-check no' + (edit.check === false ? ' on' : '')}
+                  onClick={() => setEdit(x => ({ ...x, check: x.check === false ? undefined : false }))}
+                ><X size={15} strokeWidth={3} /> できなかった</button>
+              </div>
+            )}
+
             <div className="modal-input-row">
               <button className="chip big" onClick={() => stepEdit(-stepFor(edit.habit))}><Minus size={16} /></button>
               <input
@@ -213,7 +256,7 @@ export default function GridView({ state, setState }) {
             </div>
             <div className="modal-btns">
               <button className="btn btn-ghost" onClick={() => { setVal(edit.date, edit.habit.id, undefined); setEdit(null) }}>クリア</button>
-              <button className="btn btn-blue" onClick={saveNumber}>保存</button>
+              <button className="btn btn-blue" onClick={saveEdit}>保存</button>
             </div>
           </div>
         </div>

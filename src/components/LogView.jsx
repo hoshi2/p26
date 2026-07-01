@@ -13,7 +13,8 @@ const HEX = {
 
 export default function LogView({ state }) {
   const days = state.days || {}
-  const numberHabits = habitsForMonth(state, todayStr().slice(0, 7)).filter(h => h.type === 'number')
+  const numberHabits = habitsForMonth(state, todayStr().slice(0, 7))
+    .filter(h => h.type === 'number' || h.type === 'record' || (h.type === 'check' && h.num))
 
   return (
     <>
