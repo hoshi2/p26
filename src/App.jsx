@@ -84,7 +84,7 @@ export default function App() {
       <header className="app-header">
         <div className="header-inner">
           <div className="logo">
-            <span className="logo-text">P26</span>
+            <span className="logo-text">26</span>
           </div>
           <div className="header-right">
             <span className={'save-badge' + (saving ? ' saving' : '')}>

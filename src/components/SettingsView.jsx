@@ -270,6 +270,12 @@ export default function SettingsView({ state, setState, cloudOn }) {
             value={state.targets?.uberHourlyYen ?? TARGETS.uberHourlyYen} placeholder="2500"
             onChange={e => setTarget('uberHourlyYen', e.target.value)} />
         </div>
+        <div className="input-group" style={{ margin: 0 }}>
+          <label className="input-label" style={{ paddingLeft: 4 }}>目標体重（kg）</label>
+          <input className="input-field" type="number" inputMode="decimal"
+            value={state.targets?.weightKg || ''} placeholder="例 62"
+            onChange={e => setTarget('weightKg', e.target.value)} />
+        </div>
       </div>
 
       <div className="section-header">クラウド自動保存（消えない保存）</div>

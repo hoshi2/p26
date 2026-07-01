@@ -36,7 +36,7 @@ export const TARGETS = {
 
 // 禁煙の節約計算用
 export const SMOKING = {
-  pricePerPack: 600,
+  pricePerPack: 620,
   cigsPerPack: 20,
   cigsPerDayBefore: 20,
 }

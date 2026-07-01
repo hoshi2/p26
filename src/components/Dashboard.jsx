@@ -1,5 +1,5 @@
 import React from 'react'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts'
 import { TrendingUp, Heart, BookOpen, CalendarClock } from 'lucide-react'
 import { DEADLINES, TARGETS, todayStr } from '../data/initialData.js'
 import {
@@ -54,6 +54,7 @@ export default function Dashboard({ state }) {
   const studyTotal = totalSum(days, 'study')
   const weight = latestVal(days, 'weight')
   const weightData = numberSeries(days, 'weight')
+  const weightTarget = Number(state.targets?.weightKg) || 0
   const smoke = smokingStats(days, 'no-smoke')
   const workoutDays = monthDoneCount(days, 'workout')
 
@@ -139,6 +140,7 @@ export default function Dashboard({ state }) {
           <div className="kpi-card green-border">
             <div className="kpi-label"><Heart size={11} style={{ verticalAlign: -1 }} /> 最新体重</div>
             <div className="kpi-value green">{weight !== null ? weight : '—'}<span className="unit">kg</span></div>
+            {weightTarget > 0 && <div className="kpi-sub">目標 {weightTarget}kg{weight !== null ? `・あと${Math.max(0, Math.round((weight - weightTarget) * 10) / 10)}kg` : ''}</div>}
           </div>
         )}
         {has('workout') && (
@@ -160,6 +162,10 @@ export default function Dashboard({ state }) {
                 <YAxis domain={['auto', 'auto']} tick={{ fill: '#8a92a6', fontSize: 10 }} tickLine={false} axisLine={false} width={36} />
                 <Tooltip contentStyle={{ background: '#fff', border: '1px solid #d2dae6', borderRadius: 8, fontSize: 12 }}
                   labelStyle={{ color: '#525a6e' }} formatter={v => v + 'kg'} />
+                {weightTarget > 0 && (
+                  <ReferenceLine y={weightTarget} stroke="#b8893a" strokeDasharray="4 4"
+                    label={{ value: `目標 ${weightTarget}kg`, position: 'insideTopRight', fill: '#9c7320', fontSize: 10 }} />
+                )}
                 <Line type="monotone" dataKey="value" stroke="#2f9e6f" strokeWidth={2} dot={{ r: 2 }} />
               </LineChart>
             </ResponsiveContainer>
