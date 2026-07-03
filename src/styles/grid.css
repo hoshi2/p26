@@ -30,6 +30,8 @@
   border: none; background: var(--border2); cursor: pointer;
 }
 .week-dot.on { background: var(--blue); width: 20px; border-radius: 4px; }
+.week-arrow.sm { width: 30px; height: 30px; border-radius: 8px; }
+.week-range { text-align: center; font-size: 11px; color: var(--text3); margin-top: 6px; }
 .week-today {
   margin-left: 8px;
   font-size: 10px; color: var(--blue2);

@@ -87,8 +87,8 @@ export default function App() {
             <span className="logo-text">26</span>
           </div>
           <div className="header-right">
-            <span className={'save-badge' + (saving ? ' saving' : '')}>
-              {saving ? '保存中…' : cloudOn ? '☁ クラウド' : '自動保存'}
+            <span className="save-badge">
+              {cloudOn ? '☁ クラウド' : saving ? '保存中…' : '自動保存'}
             </span>
             <div className="header-date">
               <span className="hd-day">{today.slice(5).replace('-', '/')} ({weekdayJP(today)})</span>

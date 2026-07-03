@@ -3,41 +3,14 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { TrendingUp, Heart, BookOpen, CalendarClock } from 'lucide-react'
 import { DEADLINES, TARGETS, todayStr } from '../data/initialData.js'
 import {
-  calcStreak, weekRate, monthRate, daysBetween,
-  monthSum, totalSum, monthSub2Sum, monthWorkedDays, monthDoneCount,
+  daysBetween, monthSum, totalSum, monthSub2Sum, monthWorkedDays, monthDoneCount,
   latestVal, numberSeries, smokingStats, yen, habitsForMonth,
 } from '../utils/calc.js'
-
-function Ring({ pct, color, sub }) {
-  const r = 32, c = 2 * Math.PI * r
-  const off = c - (pct / 100) * c
-  return (
-    <div className="ring">
-      <svg width="80" height="80" viewBox="0 0 80 80">
-        <circle cx="40" cy="40" r={r} fill="none" stroke="var(--bg4)" strokeWidth="7" />
-        <circle
-          cx="40" cy="40" r={r} fill="none" stroke={color} strokeWidth="7"
-          strokeDasharray={c} strokeDashoffset={off}
-          strokeLinecap="round" transform="rotate(-90 40 40)"
-          style={{ transition: 'stroke-dashoffset 0.6s ease' }}
-        />
-      </svg>
-      <div className="ring-label">
-        <span className="ring-pct">{pct}%</span>
-        <span className="ring-sub">{sub}</span>
-      </div>
-    </div>
-  )
-}
 
 export default function Dashboard({ state }) {
   const days = state.days || {}
   const habits = habitsForMonth(state, todayStr().slice(0, 7))
   const has = (id) => habits.some(h => h.id === id)
-
-  const streak = calcStreak(days, habits)
-  const wRate = weekRate(days, habits)
-  const mRate = monthRate(days, habits)
 
   // Uber
   const uberMonthlyTarget = state.targets?.uberMonthlyYen ?? TARGETS.uberMonthlyYen
@@ -184,20 +157,6 @@ export default function Dashboard({ state }) {
           </div>
         </div>
       )}
-
-      {/* ⑤ 全体の達成率（控えめに一番下） */}
-      <div className="card" style={{ marginTop: 22 }}>
-        <div className="card-head">
-          <span className="card-title blue">全体の達成率</span>
-        </div>
-        <div className="ring-wrap">
-          <Ring pct={wRate} color="var(--blue)" sub="週間" />
-          <Ring pct={mRate} color="var(--accent)" sub="月間" />
-        </div>
-      </div>
-      <div style={{ margin: '12px 16px 0', color: 'var(--text3)', fontSize: 12, textAlign: 'center' }}>
-        全部達成できた日の連続：<b style={{ color: 'var(--text2)' }}>{streak}</b> 日
-      </div>
 
       <div style={{ height: 24 }} />
     </>
