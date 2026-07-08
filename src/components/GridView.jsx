@@ -212,11 +212,7 @@ export default function GridView({ state, setState }) {
                   <span className="hg-cat" style={{ background: catColor(h.cat) }} />
                   <span className="hg-name-txt">
                     {h.name}
-                    <span className="hg-name-sub">
-                      {h.type === 'number'
-                        ? (h.target ? `目標${h.target}${h.unit || ''}` : (h.unit || '記録'))
-                        : (h.hint || '')}
-                    </span>
+                    <span className="hg-name-sub">{h.type === 'check' ? (h.hint || '') : ''}</span>
                   </span>
                 </td>
                 {days.map(dd => {
