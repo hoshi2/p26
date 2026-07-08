@@ -39,6 +39,7 @@ export default function Dashboard({ state }) {
   // 筋トレ：チェック型なら✓日数、数字型なら記録した日数＋合計時間
   const workoutHabit = habits.find(h => h.id === 'workout')
   const workoutIsNum = workoutHabit && workoutHabit.type !== 'check'
+  const workoutHasNum = workoutHabit && (workoutHabit.type !== 'check' || workoutHabit.num)
   const workoutDays = workoutIsNum ? monthWorkedDays(days, 'workout') : monthDoneCount(days, 'workout')
   const workoutTotal = monthSum(days, 'workout')
 
@@ -134,7 +135,7 @@ export default function Dashboard({ state }) {
           <div className="kpi-card green-border">
             <div className="kpi-label">今月の筋トレ</div>
             <div className="kpi-value green">{workoutDays}<span className="unit">日</span></div>
-            {workoutIsNum && <div className="kpi-sub">計 {workoutTotal}{workoutHabit.unit || 'h'}</div>}
+            {workoutHasNum && workoutTotal > 0 && <div className="kpi-sub">計 {workoutTotal}{workoutHabit.unit || 'h'}</div>}
           </div>
         )}
       </div>
