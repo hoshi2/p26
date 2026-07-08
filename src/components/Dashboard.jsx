@@ -1,10 +1,10 @@
 import React from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts'
 import { TrendingUp, Heart, BookOpen, CalendarClock } from 'lucide-react'
-import { DEADLINES, TARGETS, todayStr } from '../data/initialData.js'
+import { DEADLINES, TARGETS, SMOKING, todayStr } from '../data/initialData.js'
 import {
   daysBetween, monthSum, totalSum, monthSub2Sum, monthWorkedDays, monthDoneCount,
-  latestVal, numberSeries, smokingStats, checkStreak, yen, habitsForMonth,
+  latestVal, numberSeries, yen, habitsForMonth,
 } from '../utils/calc.js'
 
 export default function Dashboard({ state }) {
@@ -28,7 +28,13 @@ export default function Dashboard({ state }) {
   const weight = latestVal(days, 'weight')
   const weightData = numberSeries(days, 'weight')
   const weightTarget = Number(state.targets?.weightKg) || 0
-  const smoke = smokingStats(days, 'no-smoke')
+  // 今月の日数
+  const [cy, cmo] = todayStr().slice(0, 7).split('-').map(Number)
+  const daysInMonth = new Date(cy, cmo, 0).getDate()
+  // 禁煙：今月やめられた日数
+  const noSmokeDays = monthDoneCount(days, 'no-smoke')
+  const cigsAvoided = noSmokeDays * SMOKING.cigsPerDayBefore
+  const smokeSaved = Math.round(cigsAvoided * SMOKING.pricePerPack / SMOKING.cigsPerPack)
 
   // 筋トレ：チェック型なら✓日数、数字型なら記録した日数＋合計時間
   const workoutHabit = habits.find(h => h.id === 'workout')
@@ -161,16 +167,16 @@ export default function Dashboard({ state }) {
         <div className="kpi-grid">
           {has('no-smoke') && (
             <div className="kpi-card green-border">
-              <div className="kpi-label">禁煙 継続</div>
-              <div className="kpi-value green">{smoke.days}<span className="unit">日</span></div>
-              <div className="kpi-sub">{smoke.cigsAvoided}本 / {yen(smoke.saved)} 節約</div>
+              <div className="kpi-label">禁煙（今月）</div>
+              <div className="kpi-value green">{noSmokeDays}<span className="unit">/{daysInMonth}日</span></div>
+              <div className="kpi-sub">{cigsAvoided}本 / {yen(smokeSaved)} 節約</div>
             </div>
           )}
           {offWeed && (
             <div className="kpi-card green-border">
-              <div className="kpi-label">{offWeed.name} 継続</div>
-              <div className="kpi-value green">{checkStreak(days, offWeed.id)}<span className="unit">日</span></div>
-              <div className="kpi-sub">今月 {monthDoneCount(days, offWeed.id)}日</div>
+              <div className="kpi-label">{offWeed.name}（今月）</div>
+              <div className="kpi-value green">{monthDoneCount(days, offWeed.id)}<span className="unit">/{daysInMonth}日</span></div>
+              <div className="kpi-sub">やめられた日数</div>
             </div>
           )}
         </div>
